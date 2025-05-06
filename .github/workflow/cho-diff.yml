@@ -3,7 +3,7 @@ name: Draai CHO-diff pipeline
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 4 * * *"  # Dagelijks om 02:00
+    - cron: "0 2 * * *"
 
 jobs:
   ceo-diff:
@@ -17,31 +17,48 @@ jobs:
         run: |
           Invoke-WebRequest -Uri https://static.triply.cc/cli/triplydb.exe -OutFile triplydb.exe
 
-      - name: Haal huidige datum op
-        id: datum
+      - name: Haal datums op
+        id: datums
         shell: pwsh
         run: |
-          $date = Get-Date -Format "yyyy-MM-dd"
-          echo "date=$date" >> $env:GITHUB_OUTPUT
+          $vandaag = Get-Date -Format "yyyy-MM-dd"
+          $gisteren = (Get-Date).AddDays(-1).ToString("yyyy-MM-dd")
+          echo "vandaag=$vandaag" >> $env:GITHUB_OUTPUT
+          echo "gisteren=$gisteren" >> $env:GITHUB_OUTPUT
 
-      - name: Draai SPARQL-query op TriplyDB
+      - name: Login en voer SPARQL-query uit
         run: |
           .\triplydb.exe login --token "${{ secrets.TRIPLYDB_TOKEN }}" --url https://api.linkeddata.cultureelerfgoed.nl
-          .\triplydb.exe query mijn-org/mijn-dataset query.rq --format turtle > output.ttl
+          .\triplydb.exe query rce/cho query.rq --format turtle > output.ttl
 
-      - name: Upload naar nieuwe dataset
+      - name: Upload resultaat naar nieuwe dataset
         run: |
-          $date = "${{ steps.datum.outputs.date }}"
-          .\triplydb.exe dataset create mijn-org ceo-$date --visibility private || exit 0
-          .\triplydb.exe dataset import mijn-org/ceo-$date output.ttl --format turtle
+          $vandaag = "${{ steps.datums.outputs.vandaag }}"
+          .\triplydb.exe dataset create rce ceo-$vandaag --visibility private || exit 0
+          .\triplydb.exe dataset import rce/ceo-$vandaag output.ttl --format turtle
 
-      - name: Diff met vorige dag
+      - name: Bereken verschil met gisteren en sla op
         run: |
-          $date = Get-Date
-          $prev = $date.AddDays(-1).ToString("yyyy-MM-dd")
-          $now = $date.ToString("yyyy-MM-dd")
+          $vandaag = "${{ steps.datums.outputs.vandaag }}"
+          $gisteren = "${{ steps.datums.outputs.gisteren }}"
 
-          .\triplydb.exe diff mijn-org/ceo-$prev mijn-org/ceo-$now > diff.ttl || echo "Geen vorige dataset"
+          .\triplydb.exe diff rce/ceo-$gisteren rce/ceo-$vandaag > diff.ttl || echo "Geen verschil"
+          .\triplydb.exe dataset create rce ceo-diff-$vandaag --visibility private || exit 0
+          .\triplydb.exe dataset import rce/ceo-diff-$vandaag diff.ttl --format turtle || echo "Geen diff"
 
-          .\triplydb.exe dataset create mijn-org ceo-diff-$now --visibility private || exit 0
-          .\triplydb.exe dataset import mijn-org/ceo-diff-$now diff.ttl --format turtle || echo "Geen verschil"
+      - name: Synchroniseer Triply services
+        shell: pwsh
+        run: |
+          $headers = @{
+            "Authorization" = "Bearer ${{ secrets.TRIPLYDB_TOKEN }}"
+            "Content-Type"  = "application/json"
+          }
+
+          $body = '{ "sync": true }'
+
+          $services = @("ceo-diff-latest", "ceo-diff-view")
+          foreach ($service in $services) {
+            $url = "https://api.linkeddata.cultureelerfgoed.nl/datasets/rce/ceo-diff-${{ steps.datums.outputs.vandaag }}/services/$service"
+            Write-Host "Synchroniseer service: $service"
+            Invoke-RestMethod -Uri $url -Method POST -Headers $headers -Body $body
+          }
