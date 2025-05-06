@@ -1,12 +1,12 @@
-name: Draai CHO-diff pipeline
+name: Draai CHO-diff naar één dataset
 
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 2 * * *"
+    - cron: "0 2 * * *"  # Dagelijks om 02:00 UTC
 
 jobs:
-  ceo-diff:
+  cho-diff:
     runs-on: windows-latest
 
     steps:
@@ -22,43 +22,22 @@ jobs:
         shell: pwsh
         run: |
           $vandaag = Get-Date -Format "yyyy-MM-dd"
-          $gisteren = (Get-Date).AddDays(-1).ToString("yyyy-MM-dd")
           echo "vandaag=$vandaag" >> $env:GITHUB_OUTPUT
-          echo "gisteren=$gisteren" >> $env:GITHUB_OUTPUT
 
-      - name: Login en voer SPARQL-query uit
+      - name: Draai SPARQL-query op rce/cho
         run: |
-          .\triplydb.exe login --token "${{ secrets.TRIPLYDB_TOKEN }}" --url https://api.linkeddata.cultureelerfgoed.nl
-          .\triplydb.exe query rce/cho query.rq --format turtle > output.ttl
+          .\triplydb.exe query rce/cho query.rq --format turtle > diff.ttl --token "${{ secrets.TRIPLYDB_TOKEN }}" --url https://api.linkeddata.cultureelerfgoed.nl
 
-      - name: Upload resultaat naar nieuwe dataset
-        run: |
-          $vandaag = "${{ steps.datums.outputs.vandaag }}"
-          .\triplydb.exe dataset create rce ceo-$vandaag --visibility private || exit 0
-          .\triplydb.exe dataset import rce/ceo-$vandaag output.ttl --format turtle
-
-      - name: Bereken verschil met gisteren en sla op
-        run: |
-          $vandaag = "${{ steps.datums.outputs.vandaag }}"
-          $gisteren = "${{ steps.datums.outputs.gisteren }}"
-
-          .\triplydb.exe diff rce/ceo-$gisteren rce/ceo-$vandaag > diff.ttl || echo "Geen verschil"
-          .\triplydb.exe dataset create rce ceo-diff-$vandaag --visibility private || exit 0
-          .\triplydb.exe dataset import rce/ceo-diff-$vandaag diff.ttl --format turtle || echo "Geen diff"
-
-      - name: Synchroniseer Triply services
+      - name: Zet diff.ttl om naar diff.trig met named graph
         shell: pwsh
         run: |
-          $headers = @{
-            "Authorization" = "Bearer ${{ secrets.TRIPLYDB_TOKEN }}"
-            "Content-Type"  = "application/json"
-          }
+          $datum = "${{ steps.datums.outputs.vandaag }}"
+          $inhoud = Get-Content diff.ttl
+          $graphHead = "<https://linkeddata.cultureelerfgoed.nl/graph/cho-diff/$datum> {`n"
+          $graphTail = "`n}"
+          $graphInhoud = $graphHead + ($inhoud -join "`n") + $graphTail
+          $graphInhoud | Set-Content diff.trig
 
-          $body = '{ "sync": true }'
-
-          $services = @("ceo-diff-latest", "ceo-diff-view")
-          foreach ($service in $services) {
-            $url = "https://api.linkeddata.cultureelerfgoed.nl/datasets/rce/ceo-diff-${{ steps.datums.outputs.vandaag }}/services/$service"
-            Write-Host "Synchroniseer service: $service"
-            Invoke-RestMethod -Uri $url -Method POST -Headers $headers -Body $body
-          }
+      - name: Upload diff.trig naar bestaande dataset rce/cho
+        run: |
+          .\triplydb.exe dataset import rce/cho diff.trig --format trig --token "${{ secrets.TRIPLYDB_TOKEN }}" --url https://api.linkeddata.cultureelerfgoed.nl
