@@ -1,43 +1,44 @@
-name: Draai CHO-diff naar één dataset
+name: Draai CHO-diff naar één dataset (Linux + volwaardige CLI)
 
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 2 * * *"  # Dagelijks om 02:00 UTC
+    - cron: "0 2 * * *"
 
 jobs:
   cho-diff:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Download TriplyDB CLI
+      - name: Installeer Node.js en TriplyDB CLI
         run: |
-          Invoke-WebRequest -Uri https://static.triply.cc/cli/triplydb.exe -OutFile triplydb.exe
+          sudo apt-get update
+          sudo apt-get install -y nodejs npm
+          npm install -g @triply/triplydb-cli
 
       - name: Haal datums op
         id: datums
-        shell: pwsh
         run: |
-          $vandaag = Get-Date -Format "yyyy-MM-dd"
-          echo "vandaag=$vandaag" >> $env:GITHUB_OUTPUT
+          echo "vandaag=$(date +%F)" >> $GITHUB_OUTPUT
 
       - name: Draai SPARQL-query op rce/cho
         run: |
-          .\triplydb.exe query rce/cho query.rq --format turtle > diff.ttl --token "${{ secrets.TRIPLYDB_TOKEN }}" --url https://api.linkeddata.cultureelerfgoed.nl
+          triplydb query rce/cho query.rq --format turtle > diff.ttl \
+          --token "${{ secrets.TRIPLYDB_TOKEN }}" \
+          --url https://api.linkeddata.cultureelerfgoed.nl
 
       - name: Zet diff.ttl om naar diff.trig met named graph
-        shell: pwsh
         run: |
-          $datum = "${{ steps.datums.outputs.vandaag }}"
-          $inhoud = Get-Content diff.ttl
-          $graphHead = "<https://linkeddata.cultureelerfgoed.nl/graph/cho-diff/$datum> {`n"
-          $graphTail = "`n}"
-          $graphInhoud = $graphHead + ($inhoud -join "`n") + $graphTail
-          $graphInhoud | Set-Content diff.trig
+          datum="${{ steps.datums.outputs.vandaag }}"
+          echo "<https://linkeddata.cultureelerfgoed.nl/graph/cho-diff/$datum> {" > diff.trig
+          cat diff.ttl >> diff.trig
+          echo "}" >> diff.trig
 
-      - name: Upload diff.trig naar bestaande dataset rce/cho
+      - name: Upload diff.trig naar rce/cho
         run: |
-          .\triplydb.exe dataset import rce/cho diff.trig --format trig --token "${{ secrets.TRIPLYDB_TOKEN }}" --url https://api.linkeddata.cultureelerfgoed.nl
+          triplydb dataset import rce/cho diff.trig --format trig \
+          --token "${{ secrets.TRIPLYDB_TOKEN }}" \
+          --url https://api.linkeddata.cultureelerfgoed.nl
