@@ -1,0 +1,47 @@
+name: Draai CHO-diff pipeline
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 4 * * *"  # Dagelijks om 02:00
+
+jobs:
+  ceo-diff:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download TriplyDB CLI
+        run: |
+          Invoke-WebRequest -Uri https://static.triply.cc/cli/triplydb.exe -OutFile triplydb.exe
+
+      - name: Haal huidige datum op
+        id: datum
+        shell: pwsh
+        run: |
+          $date = Get-Date -Format "yyyy-MM-dd"
+          echo "date=$date" >> $env:GITHUB_OUTPUT
+
+      - name: Draai SPARQL-query op TriplyDB
+        run: |
+          .\triplydb.exe login --token "${{ secrets.TRIPLYDB_TOKEN }}" --url https://api.linkeddata.cultureelerfgoed.nl
+          .\triplydb.exe query mijn-org/mijn-dataset query.rq --format turtle > output.ttl
+
+      - name: Upload naar nieuwe dataset
+        run: |
+          $date = "${{ steps.datum.outputs.date }}"
+          .\triplydb.exe dataset create mijn-org ceo-$date --visibility private || exit 0
+          .\triplydb.exe dataset import mijn-org/ceo-$date output.ttl --format turtle
+
+      - name: Diff met vorige dag
+        run: |
+          $date = Get-Date
+          $prev = $date.AddDays(-1).ToString("yyyy-MM-dd")
+          $now = $date.ToString("yyyy-MM-dd")
+
+          .\triplydb.exe diff mijn-org/ceo-$prev mijn-org/ceo-$now > diff.ttl || echo "Geen vorige dataset"
+
+          .\triplydb.exe dataset create mijn-org ceo-diff-$now --visibility private || exit 0
+          .\triplydb.exe dataset import mijn-org/ceo-diff-$now diff.ttl --format turtle || echo "Geen verschil"
