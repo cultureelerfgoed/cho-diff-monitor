@@ -1,4 +1,4 @@
-name: Draai CHO-diff
+name: Draai CHO-diff met TriplyDB.exe (correcte .trig-opbouw)
 
 on:
   workflow_dispatch:
@@ -30,15 +30,20 @@ jobs:
           https://api.linkeddata.cultureelerfgoed.nl/queries/rce/Query-11-4/1/run `
           -o diff.ttl
 
-      - name: Zet diff.ttl om naar diff.trig met named graph
+      - name: Zet diff.ttl om naar correct diff.trig met named graph
         shell: pwsh
         run: |
           $datum = "${{ steps.datum.outputs.vandaag }}"
-          $head = "<https://linkeddata.cultureelerfgoed.nl/graph/cho-diff/$datum> {`n"
-          $tail = "`n}"
-          $body = Get-Content diff.ttl -Raw
-          $graph = $head + $body + $tail
-          $graph | Set-Content diff.trig -Encoding UTF8
+          $ttl = Get-Content diff.ttl -Raw
+
+          # Split op eerste lege regel (prefixen en triples)
+          $split = $ttl -split "(\r?\n){2,}", 2
+          $prefixes = $split[0].Trim()
+          $triples = $split[1].Trim()
+
+          $graphUri = "<https://linkeddata.cultureelerfgoed.nl/graph/cho-diff/$datum>"
+          $trig = "$prefixes`r`n`r`n$graphUri {`r`n$triples`r`n}"
+          $trig | Set-Content diff.trig -Encoding UTF8
 
       - name: Upload diff.trig naar rce/cho via import-from-file
         run: |
