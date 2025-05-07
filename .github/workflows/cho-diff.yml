@@ -1,4 +1,4 @@
-name: Draai CHO-diff naar één dataset (Linux + volwaardige CLI)
+name: Draai CHO-diff vanuit vaste API-query
 
 on:
   workflow_dispatch:
@@ -13,31 +13,31 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Installeer Node.js en TriplyDB CLI
+      - name: Installeer TriplyDB CLI
         run: |
           sudo apt-get update
           sudo apt-get install -y nodejs npm
           npm install -g @triply/triplydb-cli
 
-      - name: Haal datums op
-        id: datums
-        run: |
-          echo "vandaag=$(date +%F)" >> $GITHUB_OUTPUT
+      - name: Haal datum op
+        id: datum
+        run: echo "vandaag=$(date +%F)" >> $GITHUB_OUTPUT
 
-      - name: Draai SPARQL-query op rce/cho
+      - name: Haal RDF-resultaat van Triply API-query op
         run: |
-          triplydb query rce/cho query.rq --format turtle > diff.ttl \
-          --token "${{ secrets.TRIPLYDB_TOKEN }}" \
-          --url https://api.linkeddata.cultureelerfgoed.nl
+          curl -X POST \
+            -H "Accept: text/turtle" \
+            https://api.linkeddata.cultureelerfgoed.nl/queries/rce/Query-11-4/1/run \
+            -o diff.ttl
 
       - name: Zet diff.ttl om naar diff.trig met named graph
         run: |
-          datum="${{ steps.datums.outputs.vandaag }}"
+          datum="${{ steps.datum.outputs.vandaag }}"
           echo "<https://linkeddata.cultureelerfgoed.nl/graph/cho-diff/$datum> {" > diff.trig
           cat diff.ttl >> diff.trig
           echo "}" >> diff.trig
 
-      - name: Upload diff.trig naar rce/cho
+      - name: Upload diff.trig naar bestaande dataset rce/cho
         run: |
           triplydb dataset import rce/cho diff.trig --format trig \
           --token "${{ secrets.TRIPLYDB_TOKEN }}" \
