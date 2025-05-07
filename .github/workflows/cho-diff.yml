@@ -1,4 +1,4 @@
-name: Draai CHO-diff met TriplyDB.exe (correcte .trig-opbouw)
+name: Draai CHO-diff met TriplyDB.exe (Windows + correcte trig-opbouw)
 
 on:
   workflow_dispatch:
@@ -34,16 +34,25 @@ jobs:
         shell: pwsh
         run: |
           $datum = "${{ steps.datum.outputs.vandaag }}"
-          $ttl = Get-Content diff.ttl -Raw
+          $prefixes = @()
+          $triples = @()
+          $inTriples = $false
 
-          # Split op eerste lege regel (prefixen en triples)
-          $split = $ttl -split "(\r?\n){2,}", 2
-          $prefixes = $split[0].Trim()
-          $triples = $split[1].Trim()
+          foreach ($line in Get-Content diff.ttl) {
+            if ($inTriples) {
+              $triples += $line
+            }
+            elseif ($line -match "^\s*$") {
+              $inTriples = $true
+            }
+            else {
+              $prefixes += $line
+            }
+          }
 
           $graphUri = "<https://linkeddata.cultureelerfgoed.nl/graph/cho-diff/$datum>"
-          $trig = "$prefixes`r`n`r`n$graphUri {`r`n$triples`r`n}"
-          $trig | Set-Content diff.trig -Encoding UTF8
+          $output = $prefixes + "" + "$graphUri {" + $triples + "}"
+          $output | Set-Content diff.trig -Encoding UTF8
 
       - name: Upload diff.trig naar rce/cho via import-from-file
         run: |
