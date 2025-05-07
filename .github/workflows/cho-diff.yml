@@ -1,9 +1,9 @@
-name: Draai CHO-diff met TriplyDB.exe op Windows
+name: Draai CHO-diff
 
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 2 * * *"  # Dagelijks om 02:00 UTC
+    - cron: "0 2 * * *"
 
 jobs:
   cho-diff:
@@ -13,7 +13,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Download TriplyDB CLI (Windows .exe)
+      - name: Download TriplyDB CLI (triplydb.exe)
         run: |
           Invoke-WebRequest -Uri https://static.triply.cc/cli/triplydb.exe -OutFile triplydb.exe
 
@@ -40,8 +40,11 @@ jobs:
           $graph = $head + $body + $tail
           $graph | Set-Content diff.trig -Encoding UTF8
 
-      - name: Upload diff.trig naar bestaande dataset rce/cho
+      - name: Upload diff.trig naar rce/cho via import-from-file
         run: |
-          .\triplydb.exe dataset import rce/cho diff.trig --format trig `
-          --token "${{ secrets.TRIPLYDB_TOKEN }}" `
-          --url https://api.linkeddata.cultureelerfgoed.nl
+          .\triplydb.exe import-from-file `
+            --account rce `
+            --dataset cho `
+            --token "${{ secrets.TRIPLYDB_TOKEN }}" `
+            --url https://api.linkeddata.cultureelerfgoed.nl `
+            diff.trig
