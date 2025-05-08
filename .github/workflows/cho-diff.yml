@@ -1,4 +1,4 @@
-name: Draai CHO-diff met TriplyDB.exe (Windows + correcte trig-opbouw)
+name: CHO-diff per dag
 
 on:
   workflow_dispatch:
