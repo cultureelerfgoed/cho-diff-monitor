@@ -37,11 +37,12 @@ jobs:
           $inTriples = $false
 
           foreach ($line in Get-Content diff.ttl) {
+            if (-not $inTriples -and ($line -match "^\s*$")) {
+              $inTriples = $true
+              continue
+            }
             if ($inTriples) {
               $triples += $line
-            }
-            elseif ($line -match "^\s*$") {
-              $inTriples = $true
             }
             else {
               $prefixes += $line
@@ -50,7 +51,7 @@ jobs:
 
           $graphUri = "<https://linkeddata.cultureelerfgoed.nl/graph/cho-diff/$datum>"
           $output = $prefixes + "" + "$graphUri {" + $triples + "}"
-          $output | Set-Content diff.trig -Encoding UTF8
+          $output | Out-File diff.trig -Encoding utf8 -NoNewline
 
       - name: Upload diff.trig naar rce/cho via import-from-file
         run: |
