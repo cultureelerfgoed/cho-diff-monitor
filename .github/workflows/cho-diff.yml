@@ -27,7 +27,7 @@ jobs:
       - name: Download RDF-resultaat van Triply API-query
         run: |
           curl -X POST -H "Accept: text/turtle" `
-          https://api.linkeddata.cultureelerfgoed.nl/queries/rce/Query-11-4/2/run?page=1&pageSize=200 `
+          https://api.linkeddata.cultureelerfgoed.nl/queries/rce/Query-11-4/2/run?page=1&pageSize=200" `
           -o diff.ttl
 
       - name: Zet diff.ttl om naar correct diff.trig met named graph
