@@ -1,4 +1,4 @@
-name: CHO-diff per dag
+name: Draai CHO-diff
 
 on:
   workflow_dispatch:
@@ -26,9 +26,9 @@ jobs:
 
       - name: Download RDF-resultaat van Triply API-query
         run: |
-          curl -X POST -H "Accept: text/turtle" "https://api.linkeddata.cultureelerfgoed.nl/queries/rce/Query-11-4/2/run?page=1&pageSize=200" -o diff.ttl
+          curl -X POST -H "Accept: text/turtle" "https://api.linkeddata.cultureelerfgoed.nl/queries/rce/Query-11-4/2/run?page=1&pageSize=1000" -o diff.ttl
 
-      - name: Zet diff.ttl om naar correct diff.trig met named graph
+      - name: Zet diff.ttl om naar correcte diff.trig met named graph
         shell: pwsh
         run: |
           $datum = "${{ steps.datum.outputs.vandaag }}"
@@ -36,7 +36,7 @@ jobs:
           $triples = @()
           $inTriples = $false
 
-          foreach ($line in Get-Content diff.ttl) {
+          foreach ($line in Get-Content diff.ttl -Encoding UTF8) {
             if (-not $inTriples -and ($line -match "^\s*$")) {
               $inTriples = $true
               continue
@@ -50,8 +50,14 @@ jobs:
           }
 
           $graphUri = "<https://linkeddata.cultureelerfgoed.nl/graph/cho-diff/$datum>"
-          $output = $prefixes + "" + "$graphUri {" + $triples + "}"
-          $output | Out-File diff.trig -Encoding utf8 -NoNewline
+          $lines = @()
+          $lines += $prefixes
+          $lines += ""
+          $lines += "$graphUri {"
+          $lines += $triples
+          $lines += "}"
+
+          [System.IO.File]::WriteAllLines("diff.trig", $lines, [System.Text.Encoding]::UTF8)
 
       - name: Upload diff.trig naar rce/cho via import-from-file
         run: |
