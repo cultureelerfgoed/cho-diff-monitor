@@ -38,7 +38,7 @@ def write_result_graph(
     lines.append(f"@prefix ceo: <{CEOPREFIX}> .")
     lines.append("@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .")
     lines.append("")
-    lines.append(f"<{graph_uri}> {{")
+    lines.append(f"GRAPH <{graph_uri}> {{")
 
     for row in rows:
         item = row["item"]
