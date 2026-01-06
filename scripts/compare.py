@@ -6,17 +6,21 @@
 # - uitvoeren van query-monitor.rq
 # - genereren van volledige CSV
 # - schrijven van resultaat-graph
-# - versturen van mail
+#
+# LET OP:
+# - Mail is TIJDELIJK UITGESCHAKELD bij fouten
+# - Fouten worden via exceptions zichtbaar in GitHub Actions
 #
 # De graph is de primaire output.
 
 import sys
 import csv
-import os
 import subprocess
+import os
 from pathlib import Path
+
 from sparql import run_monitor_query
-from mail import send_mail
+from mail import send_mail  # blijft staan voor later
 
 
 CEOPREFIX = "https://linkeddata.cultureelerfgoed.nl/def/ceo#"
@@ -55,13 +59,17 @@ def write_result_graph(
 
 
 def upload_graph(trig_file):
+    token = os.environ.get("TRIPLYDB_TOKEN")
+    if not token:
+        raise RuntimeError("TRIPLYDB_TOKEN is niet beschikbaar in de environment")
+
     process = subprocess.run(
         [
             "./triplydb.exe",
             "import-from-file",
             "--account", "rce",
             "--dataset", "cho",
-            "--token", os.environ["TRIPLYDB_TOKEN"],
+            "--token", token,
             "--url", "https://api.linkeddata.cultureelerfgoed.nl",
             trig_file
         ],
@@ -76,7 +84,8 @@ def upload_graph(trig_file):
 def main():
     if len(sys.argv) != 5:
         raise RuntimeError(
-            "Gebruik: compare.py <datum_gisteren> <datum_eergisteren> <graph_gisteren> <graph_eergisteren>"
+            "Gebruik: compare.py <datum_gisteren> <datum_eergisteren> "
+            "<graph_gisteren> <graph_eergisteren>"
         )
 
     datum_gisteren = sys.argv[1]
@@ -92,6 +101,7 @@ def main():
     csv_name = f"div-cho-{datum_gisteren}_{datum_eergisteren}.csv"
     trig_name = f"div-cho-{datum_gisteren}_{datum_eergisteren}.trig"
 
+    # 1. SPARQL-query uitvoeren
     try:
         rows = run_monitor_query(
             "queries/query-monitor.rq",
@@ -99,10 +109,9 @@ def main():
             graph_eergisteren
         )
     except Exception as exc:
-     raise RuntimeError(exc)
+        raise RuntimeError(f"SPARQL-monitor-query faalde: {exc}")
 
-
-    # CSV schrijven
+    # 2. CSV schrijven (altijd volledig)
     with open(csv_name, "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         writer.writerow([
@@ -111,6 +120,7 @@ def main():
             "aantalEergisteren",
             "verschil"
         ])
+
         for row in rows:
             writer.writerow([
                 row["item"],
@@ -119,7 +129,7 @@ def main():
                 row["verschil"]
             ])
 
-    # Resultaat-graph schrijven en uploaden
+    # 3. Resultaat-graph schrijven en uploaden
     try:
         write_result_graph(
             rows,
@@ -130,26 +140,13 @@ def main():
         )
         upload_graph(trig_name)
     except Exception as exc:
-        send_mail(
-            subject_date=datum_gisteren,
-            error_message=f"Resultaat-graph kon niet worden geschreven: {exc}",
-            datum_gisteren=datum_gisteren,
-            datum_eergisteren=datum_eergisteren
-        )
-        sys.exit(1)
+        raise RuntimeError(f"Resultaat-graph schrijven/uploaden faalde: {exc}")
 
-    # Afwijkingen voor mail
-    afwijkingen = [
-        row for row in rows if row["verschil"] != 0
-    ]
-
-    send_mail(
-        subject_date=datum_gisteren,
-        datum_gisteren=datum_gisteren,
-        datum_eergisteren=datum_eergisteren,
-        totaal=len(rows),
-        afwijkingen=afwijkingen,
-        csv_path=csv_name
+    # 4. Succespad
+    # Mail wordt later weer netjes aangezet
+    print(
+        f"Monitor succesvol uitgevoerd voor {datum_gisteren} vs {datum_eergisteren}. "
+        f"{len(rows)} items verwerkt."
     )
 
 
