@@ -33,7 +33,7 @@ def write_result_graph(
     lines = []
 
     for row in rows:
-        item = row["item"]
+        item = normalize_iri(row["item"])
 
         lines.append(
             f"<{item}> <{DIFF_NS}aantalGisteren> {row['aantalGisteren']} <{graph_uri}> ."
@@ -125,6 +125,11 @@ def main():
                 row["aantalEergisteren"],
                 row["verschil"]
             ])
+def normalize_iri(value: str) -> str:
+    value = value.strip()
+    if value.startswith("<") and value.endswith(">"):
+        return value[1:-1]
+    return value
 
     # 3. Resultaat-graph
     write_result_graph(
