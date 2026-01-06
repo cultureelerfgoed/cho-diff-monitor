@@ -9,6 +9,9 @@ on:
 jobs:
   cho-diff-monitor:
     runs-on: ubuntu-latest
+    env:
+      TRIPLYDB_TOKEN: ${{ secrets.TRIPLYDB_TOKEN }}
+
 
     steps:
       - name: Checkout repository
