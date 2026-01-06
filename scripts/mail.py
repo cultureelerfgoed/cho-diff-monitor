@@ -10,6 +10,7 @@
 import os
 import smtplib
 import html
+import requests
 from email.message import EmailMessage
 from pathlib import Path
 
@@ -133,4 +134,33 @@ def send_report_mail(
 
     html_body = _render_html(
         datum_gisteren=datum_gisteren,
-        datum_ee_
+        datum_eergisteren=datum_eergisteren,
+        totaal=len(rows),
+        afwijkingen=afwijkingen,
+        graph_uri=graph_uri,
+        error_message=error_message
+    )
+
+    msg = EmailMessage()
+    msg["From"] = f"{FROM_NAME} <{FROM_EMAIL}>"
+    msg["To"] = TO_EMAIL
+    msg["Subject"] = f"DIV CHO {subject_date}"
+
+    msg.set_content(
+        "Deze mail bevat HTML. Gebruik een HTML-geschikte mailclient."
+    )
+    msg.add_alternative(html_body, subtype="html")
+
+    if csv_path and Path(csv_path).exists():
+        csv_bytes = Path(csv_path).read_bytes()
+        msg.add_attachment(
+            csv_bytes,
+            maintype="text",
+            subtype="csv",
+            filename=Path(csv_path).name
+        )
+
+    with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as smtp:
+        smtp.starttls()
+        smtp.login(smtp_user, smtp_pass)
+        smtp.send_message(msg)
