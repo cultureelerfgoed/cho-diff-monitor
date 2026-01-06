@@ -5,12 +5,9 @@
 # Verantwoordelijkheden:
 # - uitvoeren van query-monitor.rq
 # - genereren van volledige CSV
-# - schrijven van resultaat-graph
+# - schrijven van resultaat-graph (N-Quads)
 #
-# LET OP:
-# - Mail is TIJDELIJK UITGESCHAKELD bij fouten
-# - Fouten worden via exceptions zichtbaar in GitHub Actions
-#
+# Mail is tijdelijk uitgeschakeld bij fouten.
 # De graph is de primaire output.
 
 import sys
@@ -20,10 +17,10 @@ import os
 from pathlib import Path
 
 from sparql import run_monitor_query
-from mail import send_mail  # blijft staan voor later
 
 
-CEOPREFIX = "https://linkeddata.cultureelerfgoed.nl/def/ceo#"
+DIFF_NS = "https://linkeddata.cultureelerfgoed.nl/def/cho-diff#"
+XSD_DATE = "<http://www.w3.org/2001/XMLSchema#date>"
 
 
 def write_result_graph(
@@ -35,22 +32,26 @@ def write_result_graph(
 ):
     lines = []
 
-    lines.append(f"@prefix ceo: <{CEOPREFIX}> .")
-    lines.append("@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .")
-    lines.append("")
-    lines.append(f"GRAPH <{graph_uri}> {{")
-
     for row in rows:
         item = row["item"]
 
-        lines.append(f"  <{item}> ceo:aantalGisteren {row['aantalGisteren']} ;")
-        lines.append(f"    ceo:aantalEergisteren {row['aantalEergisteren']} ;")
-        lines.append(f"    ceo:verschil {row['verschil']} ;")
-        lines.append(f"    ceo:datumGisteren \"{datum_gisteren}\"^^xsd:date ;")
-        lines.append(f"    ceo:datumEergisteren \"{datum_eergisteren}\"^^xsd:date .")
-        lines.append("")
-
-    lines.append("}")
+        lines.append(
+            f"<{item}> <{DIFF_NS}aantalGisteren> {row['aantalGisteren']} <{graph_uri}> ."
+        )
+        lines.append(
+            f"<{item}> <{DIFF_NS}aantalEergisteren> {row['aantalEergisteren']} <{graph_uri}> ."
+        )
+        lines.append(
+            f"<{item}> <{DIFF_NS}verschil> {row['verschil']} <{graph_uri}> ."
+        )
+        lines.append(
+            f"<{item}> <{DIFF_NS}datumGisteren> "
+            f"\"{datum_gisteren}\"^^{XSD_DATE} <{graph_uri}> ."
+        )
+        lines.append(
+            f"<{item}> <{DIFF_NS}datumEergisteren> "
+            f"\"{datum_eergisteren}\"^^{XSD_DATE} <{graph_uri}> ."
+        )
 
     Path(output_file).write_text(
         "\n".join(lines),
@@ -58,10 +59,10 @@ def write_result_graph(
     )
 
 
-def upload_graph(trig_file):
+def upload_graph(nq_file):
     token = os.environ.get("TRIPLYDB_TOKEN")
     if not token:
-        raise RuntimeError("TRIPLYDB_TOKEN is niet beschikbaar in de environment")
+        raise RuntimeError("TRIPLYDB_TOKEN is niet beschikbaar")
 
     process = subprocess.run(
         [
@@ -71,7 +72,7 @@ def upload_graph(trig_file):
             "--dataset", "cho",
             "--token", token,
             "--url", "https://api.linkeddata.cultureelerfgoed.nl",
-            trig_file
+            nq_file
         ],
         capture_output=True,
         text=True
@@ -99,19 +100,16 @@ def main():
     )
 
     csv_name = f"div-cho-{datum_gisteren}_{datum_eergisteren}.csv"
-    trig_name = f"div-cho-{datum_gisteren}_{datum_eergisteren}.trig"
+    nq_name = f"div-cho-{datum_gisteren}_{datum_eergisteren}.nq"
 
-    # 1. SPARQL-query uitvoeren
-    try:
-        rows = run_monitor_query(
-            "queries/query-monitor.rq",
-            graph_gisteren,
-            graph_eergisteren
-        )
-    except Exception as exc:
-        raise RuntimeError(f"SPARQL-monitor-query faalde: {exc}")
+    # 1. SPARQL
+    rows = run_monitor_query(
+        "queries/query-monitor.rq",
+        graph_gisteren,
+        graph_eergisteren
+    )
 
-    # 2. CSV schrijven (altijd volledig)
+    # 2. CSV
     with open(csv_name, "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         writer.writerow([
@@ -120,7 +118,6 @@ def main():
             "aantalEergisteren",
             "verschil"
         ])
-
         for row in rows:
             writer.writerow([
                 row["item"],
@@ -129,21 +126,16 @@ def main():
                 row["verschil"]
             ])
 
-    # 3. Resultaat-graph schrijven en uploaden
-    try:
-        write_result_graph(
-            rows,
-            datum_gisteren,
-            datum_eergisteren,
-            result_graph_uri,
-            trig_name
-        )
-        upload_graph(trig_name)
-    except Exception as exc:
-        raise RuntimeError(f"Resultaat-graph schrijven/uploaden faalde: {exc}")
+    # 3. Resultaat-graph
+    write_result_graph(
+        rows,
+        datum_gisteren,
+        datum_eergisteren,
+        result_graph_uri,
+        nq_name
+    )
+    upload_graph(nq_name)
 
-    # 4. Succespad
-    # Mail wordt later weer netjes aangezet
     print(
         f"Monitor succesvol uitgevoerd voor {datum_gisteren} vs {datum_eergisteren}. "
         f"{len(rows)} items verwerkt."
