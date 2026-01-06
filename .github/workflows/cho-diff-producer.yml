@@ -3,6 +3,7 @@ name: Draai CHO-diff producer
 on:
   workflow_dispatch:
   schedule:
+    # Cron is UTC. 07:00 UTC ≈ 08:00 NL (wintertijd)
     - cron: "0 7 * * *"
 
 jobs:
@@ -13,7 +14,8 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Download TriplyDB CLI
+      - name: Download TriplyDB CLI (triplydb.exe)
+        shell: pwsh
         run: |
           Invoke-WebRequest `
             -Uri https://static.triply.cc/cli/triplydb.exe `
@@ -26,22 +28,23 @@ jobs:
           $vandaag = Get-Date -Format "yyyy-MM-dd"
           echo "vandaag=$vandaag" >> $env:GITHUB_OUTPUT
 
-      - name: Voer producer-query uit
+      - name: Voer producer-query uit (naar Turtle)
         shell: pwsh
         run: |
-          .\triplydb.exe query `
-            --token "${{ secrets.TRIPLYDB_TOKEN }}" `
+          .\triplydb.exe sparql query `
             --url https://api.linkeddata.cultureelerfgoed.nl `
+            --token "${{ secrets.TRIPLYDB_TOKEN }}" `
             --account rce `
             --dataset cho `
             --file queries/query-producer.rq `
-            --output diff.ttl `
-            --accept text/turtle
+            --accept text/turtle `
+            --output diff.ttl
 
-      - name: Zet diff.ttl om naar diff.trig met named graph
+      - name: Zet diff.ttl om naar correcte diff.trig met named graph
         shell: pwsh
         run: |
           $datum = "${{ steps.datum.outputs.vandaag }}"
+
           $prefixes = @()
           $triples = @()
           $inTriples = $false
@@ -67,13 +70,10 @@ jobs:
           $lines += $triples
           $lines += "}"
 
-          [System.IO.File]::WriteAllLines(
-            "diff.trig",
-            $lines,
-            [System.Text.Encoding]::UTF8
-          )
+          [System.IO.File]::WriteAllLines("diff.trig", $lines, [System.Text.Encoding]::UTF8)
 
-      - name: Upload diff.trig naar TriplyDB
+      - name: Upload diff.trig naar rce/cho via import-from-file
+        shell: pwsh
         run: |
           .\triplydb.exe import-from-file `
             --account rce `
