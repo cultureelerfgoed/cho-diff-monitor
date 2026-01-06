@@ -3,15 +3,15 @@ name: CHO diff monitor
 on:
   workflow_dispatch:
   schedule:
-    # 08:00 UTC ≈ 09:00 NL zomertijd / 08:00 wintertijd
+    # Cron is UTC. 08:00 UTC ≈ 09:00 NL zomertijd / 08:00 wintertijd
     - cron: "0 8 * * *"
 
 jobs:
   cho-diff-monitor:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
+
     env:
       TRIPLYDB_TOKEN: ${{ secrets.TRIPLYDB_TOKEN }}
-
 
     steps:
       - name: Checkout repository
@@ -21,25 +21,36 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
           pip install requests
 
+      - name: Download TriplyDB CLI (triplydb.exe)
+        shell: pwsh
+        run: |
+          Invoke-WebRequest `
+            -Uri https://static.triply.cc/cli/triplydb.exe `
+            -OutFile triplydb.exe
 
       - name: Bepaal datums
-        id: datum
+        shell: pwsh
         run: |
-          echo "gisteren=$(date -d 'yesterday' +%F)" >> $GITHUB_OUTPUT
-          echo "eergisteren=$(date -d '2 days ago' +%F)" >> $GITHUB_OUTPUT
+          $gisteren = (Get-Date).AddDays(-1).ToString("yyyy-MM-dd")
+          $eergisteren = (Get-Date).AddDays(-2).ToString("yyyy-MM-dd")
+
+          echo "GISTEREN=$gisteren" >> $env:GITHUB_ENV
+          echo "EERGISTEREN=$eergisteren" >> $env:GITHUB_ENV
 
       - name: Run CHO diff monitor
+        shell: pwsh
         run: |
-          python scripts/compare.py \
-            "${{ steps.datum.outputs.gisteren }}" \
-            "${{ steps.datum.outputs.eergisteren }}" \
-            "https://linkeddata.cultureelerfgoed.nl/graph/cho-diff/${{ steps.datum.outputs.gisteren }}" \
-            "https://linkeddata.cultureelerfgoed.nl/graph/cho-diff/${{ steps.datum.outputs.eergisteren }}"
+          python scripts/compare.py `
+            "$env:GISTEREN" `
+            "$env:EERGISTEREN" `
+            "https://linkeddata.cultureelerfgoed.nl/graph/cho-diff/$env:GISTEREN" `
+            "https://linkeddata.cultureelerfgoed.nl/graph/cho-diff/$env:EERGISTEREN"
 
       - name: Upload CSV artifact
         uses: actions/upload-artifact@v4
