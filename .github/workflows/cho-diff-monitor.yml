@@ -45,6 +45,9 @@ jobs:
 
       - name: Run CHO diff monitor
         shell: pwsh
+        env:
+          GMAIL_USERNAME: ${{ secrets.GMAIL_USERNAME }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
         run: |
           python scripts/compare.py `
             "$env:GISTEREN" `
