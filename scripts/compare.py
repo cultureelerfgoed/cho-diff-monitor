@@ -5,10 +5,10 @@
 # Verantwoordelijkheden:
 # - uitvoeren van query-monitor.rq
 # - genereren van volledige CSV
-# - schrijven van resultaat-graph (N-Quads)
+# - schrijven van resultaat-graph (Trig, named graph)
 #
-# Mail is tijdelijk uitgeschakeld bij fouten.
-# De graph is de primaire output.
+# CSV is secundair; de graph is de primaire output.
+# Mail is tijdelijk uitgeschakeld.
 
 import sys
 import csv
@@ -20,7 +20,17 @@ from sparql import run_monitor_query
 
 
 DIFF_NS = "https://linkeddata.cultureelerfgoed.nl/def/cho-diff#"
-XSD_DATE = "<http://www.w3.org/2001/XMLSchema#date>"
+
+
+def normalize_iri(value: str) -> str:
+    """
+    Zorgt dat een IRI exact één keer tussen < > staat.
+    SPARQL-resultaten kunnen al < > bevatten.
+    """
+    value = value.strip()
+    if value.startswith("<") and value.endswith(">"):
+        return value[1:-1]
+    return value
 
 
 def write_result_graph(
@@ -32,26 +42,30 @@ def write_result_graph(
 ):
     lines = []
 
+    # Prefixes
+    lines.append(f"@prefix diff: <{DIFF_NS}> .")
+    lines.append("@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .")
+    lines.append("")
+
+    # Named graph
+    lines.append(f"GRAPH <{graph_uri}> {{")
+
     for row in rows:
         item = normalize_iri(row["item"])
 
+        lines.append(f"  <{item}>")
+        lines.append(f"    diff:aantalGisteren {row['aantalGisteren']} ;")
+        lines.append(f"    diff:aantalEergisteren {row['aantalEergisteren']} ;")
+        lines.append(f"    diff:verschil {row['verschil']} ;")
         lines.append(
-            f"<{item}> <{DIFF_NS}aantalGisteren> {row['aantalGisteren']} <{graph_uri}> ."
+            f"    diff:datumGisteren \"{datum_gisteren}\"^^xsd:date ;"
         )
         lines.append(
-            f"<{item}> <{DIFF_NS}aantalEergisteren> {row['aantalEergisteren']} <{graph_uri}> ."
+            f"    diff:datumEergisteren \"{datum_eergisteren}\"^^xsd:date ."
         )
-        lines.append(
-            f"<{item}> <{DIFF_NS}verschil> {row['verschil']} <{graph_uri}> ."
-        )
-        lines.append(
-            f"<{item}> <{DIFF_NS}datumGisteren> "
-            f"\"{datum_gisteren}\"^^{XSD_DATE} <{graph_uri}> ."
-        )
-        lines.append(
-            f"<{item}> <{DIFF_NS}datumEergisteren> "
-            f"\"{datum_eergisteren}\"^^{XSD_DATE} <{graph_uri}> ."
-        )
+        lines.append("")
+
+    lines.append("}")
 
     Path(output_file).write_text(
         "\n".join(lines),
@@ -59,10 +73,10 @@ def write_result_graph(
     )
 
 
-def upload_graph(nq_file):
+def upload_graph(trig_file):
     token = os.environ.get("TRIPLYDB_TOKEN")
     if not token:
-        raise RuntimeError("TRIPLYDB_TOKEN is niet beschikbaar")
+        raise RuntimeError("TRIPLYDB_TOKEN is niet beschikbaar in de environment")
 
     process = subprocess.run(
         [
@@ -73,7 +87,7 @@ def upload_graph(nq_file):
             "--token", token,
             "--url", "https://api.linkeddata.cultureelerfgoed.nl",
             "--preserve-graph",
-            nq_file
+            trig_file
         ],
         capture_output=True,
         text=True
@@ -101,16 +115,16 @@ def main():
     )
 
     csv_name = f"div-cho-{datum_gisteren}_{datum_eergisteren}.csv"
-    nq_name = f"div-cho-{datum_gisteren}_{datum_eergisteren}.nq"
+    trig_name = f"div-cho-{datum_gisteren}_{datum_eergisteren}.trig"
 
-    # 1. SPARQL
+    # 1. SPARQL-query uitvoeren
     rows = run_monitor_query(
         "queries/query-monitor.rq",
         graph_gisteren,
         graph_eergisteren
     )
 
-    # 2. CSV
+    # 2. CSV schrijven (altijd volledig)
     with open(csv_name, "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         writer.writerow([
@@ -126,21 +140,16 @@ def main():
                 row["aantalEergisteren"],
                 row["verschil"]
             ])
-def normalize_iri(value: str) -> str:
-    value = value.strip()
-    if value.startswith("<") and value.endswith(">"):
-        return value[1:-1]
-    return value
 
-    # 3. Resultaat-graph
+    # 3. Resultaat-graph schrijven en uploaden
     write_result_graph(
         rows,
         datum_gisteren,
         datum_eergisteren,
         result_graph_uri,
-        nq_name
+        trig_name
     )
-    upload_graph(nq_name)
+    upload_graph(trig_name)
 
     print(
         f"Monitor succesvol uitgevoerd voor {datum_gisteren} vs {datum_eergisteren}. "
