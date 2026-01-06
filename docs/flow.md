@@ -1,10 +1,61 @@
 # Dagelijkse flow
 
-1. GitHub Action start.
-2. Datums vandaag en gisteren worden bepaald.
-3. Graph-URI’s worden opgebouwd.
-4. Vergelijkingsscript wordt uitgevoerd.
-5. SPARQL-query haalt waarden op.
-6. Verschillen worden berekend.
-7. CSV wordt gegenereerd.
-8. Resultaat wordt gemaild.
+De dagelijkse verwerking bestaat uit twee gescheiden, opeenvolgende processen:
+- de producer,
+- de monitor.
+
+Samen zorgen zij voor dagelijkse vastlegging en vergelijking van CHO-gegevens.
+
+---
+
+## Producer-flow (daggraphs)
+
+1. Een GitHub Action start automatisch.
+2. De datum van vandaag wordt bepaald.
+3. Een vaste TriplyDB-query wordt uitgevoerd.
+4. Het resultaat wordt omgezet naar Trig.
+5. De data wordt opgeslagen in een named graph met formaat:
+
+   https://linkeddata.cultureelerfgoed.nl/graph/cho-diff/YYYY-MM-DD
+
+Resultaat:
+- één daggraph per datum.
+
+---
+
+## Monitor-flow (vergelijking)
+
+1. Een GitHub Action start automatisch.
+2. De datums **gisteren** en **eergisteren** worden bepaald.
+3. De bijbehorende daggraphs worden geïdentificeerd.
+4. Er wordt gecontroleerd of beide daggraphs bestaan.
+5. Een SPARQL-query vergelijkt de twee graphs.
+6. Verschillen per item worden berekend.
+7. Een CSV met alle resultaten wordt gegenereerd.
+8. Een resultaat-graph wordt opgebouwd en opgeslagen met formaat:
+
+   https://linkeddata.cultureelerfgoed.nl/graph/cho-diff/YYYY-MM-DD_YYYY-MM-DD
+
+9. Een e-mailrapportage wordt verstuurd.
+
+---
+
+## Uitvoer en prioriteit
+
+- De **resultaat-graph** is de primaire output.
+- De **CSV** is secundaire output.
+- De **mail** is een rapportagevorm.
+
+Alle outputs worden dagelijks geproduceerd, ook als er geen verschillen zijn.
+
+---
+
+## Foutafhandeling
+
+Als een vereiste daggraph ontbreekt:
+
+- wordt geen vergelijking uitgevoerd,
+- wordt geen resultaat-graph aangemaakt,
+- wordt een e-mail verstuurd met een expliciete foutmelding.
+
+Er zijn geen stille fouten.

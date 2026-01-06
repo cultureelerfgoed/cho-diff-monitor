@@ -1,54 +1,88 @@
 # DIV CHO dagelijkse vergelijking
 
 ## Doel
-Deze repository bevat de workflow voor de dagelijkse vergelijking van CHO-gegevens in TriplyDB.
+Deze repository bevat de workflows voor de dagelijkse productie en vergelijking van CHO-gegevens in TriplyDB.
 
-Elke dag worden twee daggraphs met elkaar vergeleken. De verschillen worden:
-- vastgelegd als een nieuwe graph,
-- gerapporteerd via e-mail,
-- geleverd als CSV-bestand.
+Het proces bestaat uit twee samenhangende stappen:
 
-Het doel is vroegtijdige signalering van elke wijziging, hoe klein ook.
+1. het dagelijks vastleggen van een daggraph (producer),
+2. het dagelijks vergelijken van twee daggraphs (monitor).
+
+Elke vergelijking resulteert in:
+- een resultaat-graph in TriplyDB,
+- een CSV-bestand met alle resultaten,
+- een e-mailrapportage.
+
+Het doel is vroege signalering van elke wijziging, hoe klein ook.
 
 ---
 
 ## Dagelijkse flow
-De workflow verloopt elke dag volgens dezelfde stappen:
 
-1. Een GitHub Action start automatisch.
-2. De datum van vandaag en gisteren wordt bepaald.
-3. Er wordt gecontroleerd of de graph van gisteren bestaat.
-4. Als de graph ontbreekt:
-   - wordt een foutmelding per mail verstuurd,
-   - stopt de workflow.
-5. Als de graph bestaat:
-   - wordt een vergelijking uitgevoerd,
-   - worden verschillen berekend,
-   - wordt een CSV gegenereerd,
-   - wordt een resultaat-graph aangemaakt,
-   - wordt een mail verstuurd.
+### Producer
+De producer-workflow draait dagelijks en voert de volgende stappen uit:
+
+1. Ophalen van CHO-data via een vaste TriplyDB-query.
+2. Omzetten van het resultaat naar Trig.
+3. Opslaan van de data in een named graph voor die dag.
+
+Resultaat:
+- één daggraph per datum.
+
+---
+
+### Monitor
+De monitor-workflow draait dagelijks en vergelijkt twee bestaande daggraphs.
+
+De stappen zijn:
+
+1. Bepalen van de datums:
+   - gisteren,
+   - eergisteren.
+2. Controleren of beide daggraphs bestaan.
+3. Uitvoeren van een vergelijking via SPARQL.
+4. Berekenen van verschillen per item.
+5. Genereren van:
+   - een CSV met alle resultaten,
+   - een resultaat-graph met alleen diff-informatie.
+6. Versturen van een e-mailrapportage.
 
 ---
 
 ## Graph-conventies
 
-### Input-graphs
-Dagelijkse CHO-graphs hebben het volgende formaat:
+### Input-graphs (daggraphs)
+Dagelijkse CHO-graphs hebben het formaat:
+
 https://linkeddata.cultureelerfgoed.nl/graph/cho-diff/YYYY-MM-DD
 
+Elke graph bevat de volledige stand van zaken voor één dag.
 
-Elke graph bevat de stand van zaken voor één dag.
+---
 
-### Resultaat-graphs
-Voor elke vergelijking wordt een nieuwe graph aangemaakt met het formaat:
+### Resultaat-graphs (vergelijkingen)
+Voor elke vergelijking wordt een aparte graph aangemaakt met het formaat:
 
 https://linkeddata.cultureelerfgoed.nl/graph/cho-diff/YYYY-MM-DD_YYYY-MM-DD
 
-
 De eerste datum is de bron (van).  
-De tweede datum is het doel (tot).
+De tweede datum is het referentiepunt (tot).
 
-Deze graph bevat uitsluitend de uitkomst van de vergelijking.
+De graph bevat uitsluitend afgeleide diff-data.
+
+---
+
+## Vocabulaire
+Resultaat-graphs gebruiken een eigen vocabulaire, gescheiden van brondata:
+
+https://linkeddata.cultureelerfgoed.nl/def/cho-diff#
+
+Dit vocabulaire bevat uitsluitend eigenschappen voor:
+- aantallen per dag,
+- verschillen,
+- bijbehorende datums.
+
+Bronvocabularia (zoals CEO) worden niet hergebruikt voor diff-data.
 
 ---
 
@@ -61,8 +95,22 @@ De volgende regels zijn van toepassing:
 - Er worden geen drempels gebruikt.
 
 Gevolgen:
-- De CSV bevat altijd alle resultaten.
-- De mail toont alleen regels waar het verschil niet nul is.
+- de CSV bevat altijd alle resultaten,
+- de mail toont alleen regels met een verschil niet gelijk aan nul.
+
+---
+
+## CSV-uitvoer
+Bij elke monitor-run wordt een CSV gegenereerd met:
+
+- alle items,
+- aantallen voor beide dagen,
+- het berekende verschil.
+
+De CSV:
+- bevat geen kleurcodering,
+- is bedoeld voor archivering en nadere analyse,
+- wordt beschikbaar gesteld als workflow-artifact.
 
 ---
 
@@ -70,30 +118,32 @@ Gevolgen:
 Er wordt elke dag een mail verstuurd.
 
 Eigenschappen:
-- Ook als alle verschillen 0 zijn.
-- Ook bij fouten.
-- Onderwerp:  
-  `DIV CHO YYYY-MM-DD`
-- Ontvanger:  
-  `thesauri@cultureelerfgoed.nl`
+- ook als alle verschillen 0 zijn,
+- ook bij fouten,
+- onderwerp:
+  DIV CHO YYYY-MM-DD
+- ontvanger:
+  thesauri@cultureelerfgoed.nl
 
 De mail bevat:
 - een korte samenvatting,
 - een tabel met alleen afwijkingen,
 - een CSV-bijlage met het volledige overzicht.
 
-Kleurgebruik wordt alleen in de mail toegepast, niet in de CSV.
+Kleurgebruik wordt alleen in de mail toegepast.
 
 ---
 
 ## Foutscenario’s
-Als een benodigde graph ontbreekt (bijvoorbeeld die van gisteren):
+Als een benodigde daggraph ontbreekt:
 
 - wordt geen vergelijking uitgevoerd,
 - wordt geen resultaat-graph aangemaakt,
-- wordt een mail verstuurd met een expliciete melding:
-  - welke graph ontbreekt,
-  - om welke datum het gaat.
+- wordt een mail verstuurd met een expliciete foutmelding.
+
+De melding vermeldt:
+- welke graph ontbreekt,
+- om welke datum het gaat.
 
 Er zijn geen stille fouten.
 
@@ -101,25 +151,25 @@ Er zijn geen stille fouten.
 
 ## Repository-structuur
 
-- `.github/workflows/`  
-  GitHub Actions die de dagelijkse workflow uitvoeren.
-- `queries/`  
-  SPARQL-queries die data ophalen.
-- `scripts/`  
-  Scriptlaag voor vergelijking, rapportage en mail.
-- `docs/`  
-  Verdere documentatie over flow en graph-afspraken.
-- `tools/`  
-  Hulpmiddelen voor interactie met TriplyDB.
+- .github/workflows/  
+  GitHub Actions voor producer en monitor.
+- queries/  
+  SPARQL-queries voor productie en vergelijking.
+- scripts/  
+  Vergelijkingslogica, CSV-generatie en graph-export.
+- docs/  
+  Nadere documentatie over ontwerpkeuzes en graph-afspraken.
 
 ---
 
 ## Onderhoud en overdracht
-De logica van de vergelijking is expliciet vastgelegd in scripts en documentatie.
+De volledige logica is expliciet vastgelegd in:
 
-Ontwerpkeuzes zijn beschreven in deze README en in de documentatie onder `docs/`.
+- scripts,
+- workflows,
+- documentatie.
 
-Deze opzet is bedoeld om:
-- onderhoud eenvoudig te maken,
-- overdracht aan collega’s mogelijk te maken,
-- het proces begrijpelijk te houden zonder voorkennis.
+Ontwerpkeuzes zijn bewust gemaakt en beschreven, zodat:
+- onderhoud beheersbaar blijft,
+- overdracht aan collega’s mogelijk is,
+- het proces begrijpelijk blijft zonder voorkennis.
