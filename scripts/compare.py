@@ -5,10 +5,10 @@
 # Verantwoordelijkheden:
 # - uitvoeren van query-monitor.rq
 # - genereren van volledige CSV
-# - schrijven van resultaat-graph (Trig, named graph)
+# - schrijven van resultaat-graph (Trig met named graph)
 #
-# CSV is secundair; de graph is de primaire output.
-# Mail is tijdelijk uitgeschakeld.
+# CSV is bijvangst.
+# De named graph is het product.
 
 import sys
 import csv
@@ -23,10 +23,7 @@ DIFF_NS = "https://linkeddata.cultureelerfgoed.nl/def/cho-diff#"
 
 
 def normalize_iri(value: str) -> str:
-    """
-    Zorgt dat een IRI exact één keer tussen < > staat.
-    SPARQL-resultaten kunnen al < > bevatten.
-    """
+    """Zorgt dat een IRI exact één keer tussen < > staat."""
     value = value.strip()
     if value.startswith("<") and value.endswith(">"):
         return value[1:-1]
@@ -47,8 +44,8 @@ def write_result_graph(
     lines.append("@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .")
     lines.append("")
 
-    # Named graph
-    lines.append(f"GRAPH <{graph_uri}> {{")
+    # EXACT hetzelfde patroon als de producer
+    lines.append(f"<{graph_uri}> {{")
 
     for row in rows:
         item = normalize_iri(row["item"])
@@ -76,7 +73,7 @@ def write_result_graph(
 def upload_graph(trig_file):
     token = os.environ.get("TRIPLYDB_TOKEN")
     if not token:
-        raise RuntimeError("TRIPLYDB_TOKEN is niet beschikbaar in de environment")
+        raise RuntimeError("TRIPLYDB_TOKEN is niet beschikbaar")
 
     process = subprocess.run(
         [
@@ -86,7 +83,6 @@ def upload_graph(trig_file):
             "--dataset", "cho",
             "--token", token,
             "--url", "https://api.linkeddata.cultureelerfgoed.nl",
-            "--preserve-graph",
             trig_file
         ],
         capture_output=True,
@@ -117,14 +113,14 @@ def main():
     csv_name = f"div-cho-{datum_gisteren}_{datum_eergisteren}.csv"
     trig_name = f"div-cho-{datum_gisteren}_{datum_eergisteren}.trig"
 
-    # 1. SPARQL-query uitvoeren
+    # 1. SPARQL
     rows = run_monitor_query(
         "queries/query-monitor.rq",
         graph_gisteren,
         graph_eergisteren
     )
 
-    # 2. CSV schrijven (altijd volledig)
+    # 2. CSV
     with open(csv_name, "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         writer.writerow([
@@ -141,7 +137,7 @@ def main():
                 row["verschil"]
             ])
 
-    # 3. Resultaat-graph schrijven en uploaden
+    # 3. Resultaat-graph (zoals de producer)
     write_result_graph(
         rows,
         datum_gisteren,
