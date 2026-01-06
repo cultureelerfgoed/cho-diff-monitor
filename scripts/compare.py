@@ -6,7 +6,7 @@
 # - uitvoeren van query-monitor.rq
 # - genereren van volledige CSV
 # - schrijven van resultaat-graph (Trig met expliciete named graph)
-# - versturen van e-mail via SendGrid
+# - versturen van e-mail via Gmail (SMTP met App Password)
 #
 # De graph is de primaire output.
 # CSV en mail zijn afgeleide rapportages.
@@ -171,7 +171,7 @@ def main():
             datum_eergisteren=datum_eergisteren,
             rows=[],
             csv_path=None,
-            graph_uri="n.v.t.",
+            graph_uri="",
             error_message=str(exc)
         )
         raise
