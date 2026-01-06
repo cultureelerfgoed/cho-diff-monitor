@@ -12,6 +12,7 @@
 
 import sys
 import csv
+import os
 import subprocess
 from pathlib import Path
 from sparql import run_monitor_query
