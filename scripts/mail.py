@@ -4,11 +4,12 @@
 #
 # - HTML-mail
 # - CSV altijd als bijlage
-# - STARTTLS
+# - item-waarden veilig ge-escaped voor HTML
 # - geschikt voor GitHub Actions
 
 import os
 import smtplib
+import html
 from email.message import EmailMessage
 from pathlib import Path
 
@@ -16,9 +17,23 @@ from pathlib import Path
 SMTP_HOST = "smtp.gmail.com"
 SMTP_PORT = 587
 
-FROM_EMAIL = "rce.ldv.monitor@gmail.com"
+FROM_EMAIL = "rce-ldv-monitor@gmail.com"
 FROM_NAME = "DIV CHO monitor"
 TO_EMAIL = "thesauri@cultureelerfgoed.nl"
+
+
+def _clean_item(item: str) -> str:
+    """
+    Verwijdert < > rond IRIs en escapt voor HTML.
+    """
+    if not item:
+        return ""
+
+    item = item.strip()
+    if item.startswith("<") and item.endswith(">"):
+        item = item[1:-1]
+
+    return html.escape(item)
 
 
 def _render_html(
@@ -35,25 +50,27 @@ def _render_html(
           <body>
             <h2>DIV CHO – fout</h2>
             <p>Er is een fout opgetreden bij de dagelijkse vergelijking.</p>
-            <pre>{error_message}</pre>
+            <pre>{html.escape(error_message)}</pre>
             <p>Datum: {datum_gisteren}</p>
           </body>
         </html>
         """
 
     if afwijkingen:
-        rows = ""
+        rows_html = ""
         for row in afwijkingen:
-            rows += f"""
+            item_html = _clean_item(row.get("item", ""))
+
+            rows_html += f"""
             <tr>
-              <td>{row['item']}</td>
+              <td><code>{item_html}</code></td>
               <td>{row['aantalGisteren']}</td>
               <td>{row['aantalEergisteren']}</td>
               <td style="color:red;">{row['verschil']}</td>
             </tr>
             """
 
-        tabel = f"""
+        tabel_html = f"""
         <table border="1" cellpadding="4" cellspacing="0">
           <thead>
             <tr>
@@ -64,12 +81,12 @@ def _render_html(
             </tr>
           </thead>
           <tbody>
-            {rows}
+            {rows_html}
           </tbody>
         </table>
         """
     else:
-        tabel = "<p>Geen afwijkingen.</p>"
+        tabel_html = "<p>Geen afwijkingen.</p>"
 
     return f"""
     <html>
@@ -82,10 +99,10 @@ def _render_html(
           <li>Totaal aantal items: {totaal}</li>
           <li>Aantal afwijkingen: {len(afwijkingen)}</li>
         </ul>
-        {tabel}
+        {tabel_html}
         <p>
           Resultaat-graph:<br/>
-          <code>{graph_uri}</code>
+          <code>{html.escape(graph_uri)}</code>
         </p>
         <p>
           Het volledige overzicht is als CSV-bijlage toegevoegd.
@@ -114,33 +131,6 @@ def send_report_mail(
 
     afwijkingen = [r for r in rows if r.get("verschil") != 0]
 
-    html = _render_html(
+    html_body = _render_html(
         datum_gisteren=datum_gisteren,
-        datum_eergisteren=datum_eergisteren,
-        totaal=len(rows),
-        afwijkingen=afwijkingen,
-        graph_uri=graph_uri,
-        error_message=error_message
-    )
-
-    msg = EmailMessage()
-    msg["From"] = f"{FROM_NAME} <{FROM_EMAIL}>"
-    msg["To"] = TO_EMAIL
-    msg["Subject"] = f"DIV CHO {subject_date}"
-
-    msg.set_content("Deze mail bevat HTML. Gebruik een HTML-geschikte mailclient.")
-    msg.add_alternative(html, subtype="html")
-
-    if csv_path and Path(csv_path).exists():
-        csv_bytes = Path(csv_path).read_bytes()
-        msg.add_attachment(
-            csv_bytes,
-            maintype="text",
-            subtype="csv",
-            filename=Path(csv_path).name
-        )
-
-    with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as smtp:
-        smtp.starttls()
-        smtp.login(smtp_user, smtp_pass)
-        smtp.send_message(msg)
+        datum_ee_
