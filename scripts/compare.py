@@ -99,13 +99,8 @@ def main():
             graph_eergisteren
         )
     except Exception as exc:
-        send_mail(
-            subject_date=datum_gisteren,
-            error_message=str(exc),
-            datum_gisteren=datum_gisteren,
-            datum_eergisteren=datum_eergisteren
-        )
-        sys.exit(1)
+     raise RuntimeError(exc)
+
 
     # CSV schrijven
     with open(csv_name, "w", newline="", encoding="utf-8") as f:
