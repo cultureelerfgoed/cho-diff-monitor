@@ -1,21 +1,23 @@
-name: Draai CHO-diff
+name: Draai CHO-diff producer
 
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 2 * * *"
+    - cron: "0 7 * * *"
 
 jobs:
-  cho-diff:
+  cho-diff-producer:
     runs-on: windows-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Download TriplyDB CLI (triplydb.exe)
+      - name: Download TriplyDB CLI
         run: |
-          Invoke-WebRequest -Uri https://static.triply.cc/cli/triplydb.exe -OutFile triplydb.exe
+          Invoke-WebRequest `
+            -Uri https://static.triply.cc/cli/triplydb.exe `
+            -OutFile triplydb.exe
 
       - name: Haal datum op
         id: datum
@@ -24,11 +26,19 @@ jobs:
           $vandaag = Get-Date -Format "yyyy-MM-dd"
           echo "vandaag=$vandaag" >> $env:GITHUB_OUTPUT
 
-      - name: Download RDF-resultaat van Triply API-query
+      - name: Voer producer-query uit
+        shell: pwsh
         run: |
-          curl -X POST -H "Accept: text/turtle" "https://api.linkeddata.cultureelerfgoed.nl/queries/rce/Query-11-4/2/run?page=1&pageSize=1000" -o diff.ttl
+          .\triplydb.exe query `
+            --token "${{ secrets.TRIPLYDB_TOKEN }}" `
+            --url https://api.linkeddata.cultureelerfgoed.nl `
+            --account rce `
+            --dataset cho `
+            --file queries/query-producer.rq `
+            --output diff.ttl `
+            --accept text/turtle
 
-      - name: Zet diff.ttl om naar correcte diff.trig met named graph
+      - name: Zet diff.ttl om naar diff.trig met named graph
         shell: pwsh
         run: |
           $datum = "${{ steps.datum.outputs.vandaag }}"
@@ -57,9 +67,13 @@ jobs:
           $lines += $triples
           $lines += "}"
 
-          [System.IO.File]::WriteAllLines("diff.trig", $lines, [System.Text.Encoding]::UTF8)
+          [System.IO.File]::WriteAllLines(
+            "diff.trig",
+            $lines,
+            [System.Text.Encoding]::UTF8
+          )
 
-      - name: Upload diff.trig naar rce/cho via import-from-file
+      - name: Upload diff.trig naar TriplyDB
         run: |
           .\triplydb.exe import-from-file `
             --account rce `

@@ -1,0 +1,40 @@
+name: CHO diff monitor
+
+on:
+  workflow_dispatch:
+  schedule:
+    # 08:00 UTC ≈ 09:00 NL zomertijd / 08:00 wintertijd
+    - cron: "0 8 * * *"
+
+jobs:
+  cho-diff-monitor:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Bepaal datums
+        id: datum
+        run: |
+          echo "gisteren=$(date -d 'yesterday' +%F)" >> $GITHUB_OUTPUT
+          echo "eergisteren=$(date -d '2 days ago' +%F)" >> $GITHUB_OUTPUT
+
+      - name: Run CHO diff monitor
+        run: |
+          python scripts/compare.py \
+            "${{ steps.datum.outputs.gisteren }}" \
+            "${{ steps.datum.outputs.eergisteren }}" \
+            "https://linkeddata.cultureelerfgoed.nl/graph/cho-diff/${{ steps.datum.outputs.gisteren }}" \
+            "https://linkeddata.cultureelerfgoed.nl/graph/cho-diff/${{ steps.datum.outputs.eergisteren }}"
+
+      - name: Upload CSV artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cho-diff-csv
+          path: div-cho-*.csv
