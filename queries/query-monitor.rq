@@ -1,71 +1,28 @@
-# queries/query-monitor.rq
-#
-# Doel:
-# Vergelijk twee bestaande daggraphs die per ?item een ceo:aantalInstanties bevatten.
-#
-# Verwachte placeholders:
-# {{GRAPH_GISTEREN}}     – graph van gisteren (YYYY-MM-DD)
-# {{GRAPH_EERGISTEREN}}  – graph van eergisteren (YYYY-MM-DD)
-#
-# Output:
-# ?item ?aantalGisteren ?aantalEergisteren ?verschil
-
 PREFIX ceo: <https://linkeddata.cultureelerfgoed.nl/def/ceo#>
 
 SELECT
   ?item
-  ?aantalGisteren
-  ?aantalEergisteren
-  (?aantalGisteren - ?aantalEergisteren AS ?verschil)
+  (COALESCE(?gisteren, 0) AS ?aantalGisteren)
+  (COALESCE(?eergisteren, 0) AS ?aantalEergisteren)
+  (COALESCE(?gisteren, 0) - COALESCE(?eergisteren, 0) AS ?verschil)
 WHERE {
   {
-    # Alles wat in "gisteren" voorkomt, aangevuld met waarden uit "eergisteren" indien aanwezig
-    {
-      SELECT ?item (SUM(?c) AS ?aantalGisteren)
-      WHERE {
-        GRAPH <{{GRAPH_GISTEREN}}> {
-          ?item ceo:aantalInstanties ?c .
-        }
+    SELECT ?item (SUM(?c) AS ?gisteren)
+    WHERE {
+      GRAPH <{{GRAPH_GISTEREN}}> {
+        ?item ceo:aantalInstanties ?c .
       }
-      GROUP BY ?item
     }
-    OPTIONAL {
-      SELECT ?item (SUM(?c) AS ?aantalEergisteren)
-      WHERE {
-        GRAPH <{{GRAPH_EERGISTEREN}}> {
-          ?item ceo:aantalInstanties ?c .
-        }
-      }
-      GROUP BY ?item
-    }
+    GROUP BY ?item
   }
-  UNION
-  {
-    # Alles wat alleen in "eergisteren" voorkomt
-    {
-      SELECT ?item (SUM(?c) AS ?aantalEergisteren)
-      WHERE {
-        GRAPH <{{GRAPH_EERGISTEREN}}> {
-          ?item ceo:aantalInstanties ?c .
-        }
+  OPTIONAL {
+    SELECT ?item (SUM(?c) AS ?eergisteren)
+    WHERE {
+      GRAPH <{{GRAPH_EERGISTEREN}}> {
+        ?item ceo:aantalInstanties ?c .
       }
-      GROUP BY ?item
     }
-    OPTIONAL {
-      SELECT ?item (SUM(?c) AS ?aantalGisteren)
-      WHERE {
-        GRAPH <{{GRAPH_GISTEREN}}> {
-          ?item ceo:aantalInstanties ?c .
-        }
-      }
-      GROUP BY ?item
-    }
-    FILTER(!BOUND(?aantalGisteren))
-    BIND(0 AS ?aantalGisteren)
+    GROUP BY ?item
   }
-
-  # Zorg dat beide altijd een waarde hebben
-  BIND(COALESCE(?aantalGisteren, 0) AS ?aantalGisteren)
-  BIND(COALESCE(?aantalEergisteren, 0) AS ?aantalEergisteren)
 }
 ORDER BY DESC(?verschil) ?item
