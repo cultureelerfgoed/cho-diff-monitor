@@ -1,4 +1,4 @@
-name: CHO-diff producer
+name: CHO diff producer
 
 on:
   workflow_dispatch:

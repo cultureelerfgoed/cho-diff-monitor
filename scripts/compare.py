@@ -72,6 +72,7 @@ def upload_graph(nq_file):
             "--dataset", "cho",
             "--token", token,
             "--url", "https://api.linkeddata.cultureelerfgoed.nl",
+            "--preserve-graph",
             nq_file
         ],
         capture_output=True,
