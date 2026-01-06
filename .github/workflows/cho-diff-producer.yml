@@ -3,7 +3,7 @@ name: Draai CHO-diff producer
 on:
   workflow_dispatch:
   schedule:
-    # Cron is UTC. 07:00 UTC ≈ 08:00 NL (wintertijd)
+    # 07:00 UTC ≈ 08:00 NL wintertijd
     - cron: "0 7 * * *"
 
 jobs:
@@ -28,17 +28,13 @@ jobs:
           $vandaag = Get-Date -Format "yyyy-MM-dd"
           echo "vandaag=$vandaag" >> $env:GITHUB_OUTPUT
 
-      - name: Voer producer-query uit (naar Turtle)
+      - name: Download RDF-resultaat van Triply Query API
         shell: pwsh
         run: |
-          .\triplydb.exe sparql query `
-            --url https://api.linkeddata.cultureelerfgoed.nl `
-            --token "${{ secrets.TRIPLYDB_TOKEN }}" `
-            --account rce `
-            --dataset cho `
-            --file queries/query-producer.rq `
-            --accept text/turtle `
-            --output diff.ttl
+          curl `
+            -H "Accept: text/turtle" `
+            "https://api.linkeddata.cultureelerfgoed.nl/queries/rce/Query-11-4/2/run?page=1&pageSize=1000" `
+            -o diff.ttl
 
       - name: Zet diff.ttl om naar correcte diff.trig met named graph
         shell: pwsh
@@ -70,7 +66,11 @@ jobs:
           $lines += $triples
           $lines += "}"
 
-          [System.IO.File]::WriteAllLines("diff.trig", $lines, [System.Text.Encoding]::UTF8)
+          [System.IO.File]::WriteAllLines(
+            "diff.trig",
+            $lines,
+            [System.Text.Encoding]::UTF8
+          )
 
       - name: Upload diff.trig naar rce/cho via import-from-file
         shell: pwsh
