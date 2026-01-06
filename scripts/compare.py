@@ -5,10 +5,11 @@
 # Verantwoordelijkheden:
 # - uitvoeren van query-monitor.rq
 # - genereren van volledige CSV
-# - schrijven van resultaat-graph (Trig met named graph)
+# - schrijven van resultaat-graph (Trig met expliciete named graph)
+# - versturen van e-mail via SendGrid
 #
-# CSV is bijvangst.
-# De named graph is het product.
+# De graph is de primaire output.
+# CSV en mail zijn afgeleide rapportages.
 
 import sys
 import csv
@@ -17,13 +18,13 @@ import os
 from pathlib import Path
 
 from sparql import run_monitor_query
+from mail import send_report_mail
 
 
 DIFF_NS = "https://linkeddata.cultureelerfgoed.nl/def/cho-diff#"
 
 
 def normalize_iri(value: str) -> str:
-    """Zorgt dat een IRI exact één keer tussen < > staat."""
     value = value.strip()
     if value.startswith("<") and value.endswith(">"):
         return value[1:-1]
@@ -39,12 +40,11 @@ def write_result_graph(
 ):
     lines = []
 
-    # Prefixes
     lines.append(f"@prefix diff: <{DIFF_NS}> .")
     lines.append("@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .")
     lines.append("")
 
-    # EXACT hetzelfde patroon als de producer
+    # Zelfde constructie als producer
     lines.append(f"<{graph_uri}> {{")
 
     for row in rows:
@@ -73,7 +73,7 @@ def write_result_graph(
 def upload_graph(trig_file):
     token = os.environ.get("TRIPLYDB_TOKEN")
     if not token:
-        raise RuntimeError("TRIPLYDB_TOKEN is niet beschikbaar")
+        raise RuntimeError("TRIPLYDB_TOKEN ontbreekt")
 
     process = subprocess.run(
         [
@@ -113,44 +113,68 @@ def main():
     csv_name = f"div-cho-{datum_gisteren}_{datum_eergisteren}.csv"
     trig_name = f"div-cho-{datum_gisteren}_{datum_eergisteren}.trig"
 
-    # 1. SPARQL
-    rows = run_monitor_query(
-        "queries/query-monitor.rq",
-        graph_gisteren,
-        graph_eergisteren
-    )
+    try:
+        # 1. SPARQL-vergelijking
+        rows = run_monitor_query(
+            "queries/query-monitor.rq",
+            graph_gisteren,
+            graph_eergisteren
+        )
 
-    # 2. CSV
-    with open(csv_name, "w", newline="", encoding="utf-8") as f:
-        writer = csv.writer(f)
-        writer.writerow([
-            "item",
-            "aantalGisteren",
-            "aantalEergisteren",
-            "verschil"
-        ])
-        for row in rows:
+        # 2. CSV schrijven (altijd volledig)
+        with open(csv_name, "w", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
             writer.writerow([
-                row["item"],
-                row["aantalGisteren"],
-                row["aantalEergisteren"],
-                row["verschil"]
+                "item",
+                "aantalGisteren",
+                "aantalEergisteren",
+                "verschil"
             ])
+            for row in rows:
+                writer.writerow([
+                    row["item"],
+                    row["aantalGisteren"],
+                    row["aantalEergisteren"],
+                    row["verschil"]
+                ])
 
-    # 3. Resultaat-graph (zoals de producer)
-    write_result_graph(
-        rows,
-        datum_gisteren,
-        datum_eergisteren,
-        result_graph_uri,
-        trig_name
-    )
-    upload_graph(trig_name)
+        # 3. Resultaat-graph schrijven en uploaden
+        write_result_graph(
+            rows,
+            datum_gisteren,
+            datum_eergisteren,
+            result_graph_uri,
+            trig_name
+        )
+        upload_graph(trig_name)
 
-    print(
-        f"Monitor succesvol uitgevoerd voor {datum_gisteren} vs {datum_eergisteren}. "
-        f"{len(rows)} items verwerkt."
-    )
+        # 4. Mail (succes)
+        send_report_mail(
+            subject_date=datum_gisteren,
+            datum_gisteren=datum_gisteren,
+            datum_eergisteren=datum_eergisteren,
+            rows=rows,
+            csv_path=csv_name,
+            graph_uri=result_graph_uri
+        )
+
+        print(
+            f"Monitor succesvol uitgevoerd voor {datum_gisteren} vs {datum_eergisteren}. "
+            f"{len(rows)} items verwerkt."
+        )
+
+    except Exception as exc:
+        # Mail bij fout
+        send_report_mail(
+            subject_date=datum_gisteren,
+            datum_gisteren=datum_gisteren,
+            datum_eergisteren=datum_eergisteren,
+            rows=[],
+            csv_path=None,
+            graph_uri="n.v.t.",
+            error_message=str(exc)
+        )
+        raise
 
 
 if __name__ == "__main__":

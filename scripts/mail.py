@@ -1,124 +1,146 @@
 # scripts/mail.py
 #
-# Verantwoordelijkheid:
-# - opbouwen en versturen van mails voor de CHO diff monitor
-# - zowel succes- als foutmeldingen
+# Verstuurt de dagelijkse DIV CHO mail via Gmail (SMTP + App Password).
 #
-# Dit script bevat GEEN logica over afwijkingen.
+# - HTML-mail
+# - CSV altijd als bijlage
+# - STARTTLS
+# - geschikt voor GitHub Actions
 
+import os
 import smtplib
 from email.message import EmailMessage
 from pathlib import Path
 
 
-MAIL_TO = "thesauri@cultureelerfgoed.nl"
-MAIL_FROM = "thesauri@cultureelerfgoed.nl"
-SMTP_HOST = "localhost"
+SMTP_HOST = "smtp.gmail.com"
+SMTP_PORT = 587
+
+FROM_EMAIL = "rce.ldv.monitor@gmail.com"
+FROM_NAME = "DIV CHO monitor"
+TO_EMAIL = "thesauri@cultureelerfgoed.nl"
 
 
-def send_mail(
-    subject_date,
-    datum_gisteren=None,
-    datum_eergisteren=None,
-    totaal=None,
-    afwijkingen=None,
-    csv_path=None,
-    error_message=None
-):
-    msg = EmailMessage()
-    msg["To"] = MAIL_TO
-    msg["From"] = MAIL_FROM
-    msg["Subject"] = f"DIV CHO {subject_date}"
-
-    if error_message:
-        _build_error_mail(
-            msg,
-            datum_gisteren,
-            datum_eergisteren,
-            error_message
-        )
-    else:
-        _build_success_mail(
-            msg,
-            datum_gisteren,
-            datum_eergisteren,
-            totaal,
-            afwijkingen,
-            csv_path
-        )
-
-    _send(msg)
-
-
-def _build_error_mail(msg, datum_gisteren, datum_eergisteren, error_message):
-    text = (
-        "De dagelijkse CHO-vergelijking kon niet worden uitgevoerd.\n\n"
-        f"Datum gisteren: {datum_gisteren}\n"
-        f"Datum eergisteren: {datum_eergisteren}\n\n"
-        "Foutmelding:\n"
-        f"{error_message}\n"
-    )
-
-    msg.set_content(text)
-
-
-def _build_success_mail(
-    msg,
+def _render_html(
     datum_gisteren,
     datum_eergisteren,
     totaal,
     afwijkingen,
-    csv_path
+    graph_uri,
+    error_message=None
 ):
-    html = []
-    html.append("<p>Dagelijkse CHO-vergelijking.</p>")
-    html.append("<ul>")
-    html.append(f"<li>Gisteren: {datum_gisteren}</li>")
-    html.append(f"<li>Eergisteren: {datum_eergisteren}</li>")
-    html.append(f"<li>Totaal aantal items: {totaal}</li>")
-    html.append(f"<li>Aantal afwijkingen: {len(afwijkingen)}</li>")
-    html.append("</ul>")
+    if error_message:
+        return f"""
+        <html>
+          <body>
+            <h2>DIV CHO – fout</h2>
+            <p>Er is een fout opgetreden bij de dagelijkse vergelijking.</p>
+            <pre>{error_message}</pre>
+            <p>Datum: {datum_gisteren}</p>
+          </body>
+        </html>
+        """
 
     if afwijkingen:
-        html.append("<p>Afwijkingen:</p>")
-        html.append("<table border='1' cellpadding='4' cellspacing='0'>")
-        html.append(
-            "<tr>"
-            "<th>Item</th>"
-            "<th>Aantal gisteren</th>"
-            "<th>Aantal eergisteren</th>"
-            "<th>Verschil</th>"
-            "</tr>"
+        rows = ""
+        for row in afwijkingen:
+            rows += f"""
+            <tr>
+              <td>{row['item']}</td>
+              <td>{row['aantalGisteren']}</td>
+              <td>{row['aantalEergisteren']}</td>
+              <td style="color:red;">{row['verschil']}</td>
+            </tr>
+            """
+
+        tabel = f"""
+        <table border="1" cellpadding="4" cellspacing="0">
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Gisteren</th>
+              <th>Eergisteren</th>
+              <th>Verschil</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows}
+          </tbody>
+        </table>
+        """
+    else:
+        tabel = "<p>Geen afwijkingen.</p>"
+
+    return f"""
+    <html>
+      <body>
+        <h2>DIV CHO dagelijkse vergelijking</h2>
+        <p>
+          Vergelijking van <b>{datum_gisteren}</b> met <b>{datum_eergisteren}</b>.
+        </p>
+        <ul>
+          <li>Totaal aantal items: {totaal}</li>
+          <li>Aantal afwijkingen: {len(afwijkingen)}</li>
+        </ul>
+        {tabel}
+        <p>
+          Resultaat-graph:<br/>
+          <code>{graph_uri}</code>
+        </p>
+        <p>
+          Het volledige overzicht is als CSV-bijlage toegevoegd.
+        </p>
+      </body>
+    </html>
+    """
+
+
+def send_report_mail(
+    subject_date,
+    datum_gisteren,
+    datum_eergisteren,
+    rows,
+    csv_path,
+    graph_uri,
+    error_message=None
+):
+    smtp_user = os.environ.get("GMAIL_USERNAME")
+    smtp_pass = os.environ.get("GMAIL_APP_PASSWORD")
+
+    if not smtp_user or not smtp_pass:
+        raise RuntimeError(
+            "GMAIL_USERNAME of GMAIL_APP_PASSWORD ontbreekt"
         )
 
-        for row in afwijkingen:
-            html.append(
-                "<tr style='color:red;'>"
-                f"<td>{row['item']}</td>"
-                f"<td>{row['aantalGisteren']}</td>"
-                f"<td>{row['aantalEergisteren']}</td>"
-                f"<td>{row['verschil']}</td>"
-                "</tr>"
-            )
+    afwijkingen = [r for r in rows if r.get("verschil") != 0]
 
-        html.append("</table>")
-    else:
-        html.append("<p>Er zijn geen afwijkingen gevonden.</p>")
+    html = _render_html(
+        datum_gisteren=datum_gisteren,
+        datum_eergisteren=datum_eergisteren,
+        totaal=len(rows),
+        afwijkingen=afwijkingen,
+        graph_uri=graph_uri,
+        error_message=error_message
+    )
 
-    html.append("<p>Het volledige overzicht is opgenomen in de CSV-bijlage.</p>")
+    msg = EmailMessage()
+    msg["From"] = f"{FROM_NAME} <{FROM_EMAIL}>"
+    msg["To"] = TO_EMAIL
+    msg["Subject"] = f"DIV CHO {subject_date}"
 
-    msg.add_alternative("\n".join(html), subtype="html")
+    msg.set_content("Deze mail bevat HTML. Gebruik een HTML-geschikte mailclient.")
+    msg.add_alternative(html, subtype="html")
 
-    if csv_path:
-        path = Path(csv_path)
+    if csv_path and Path(csv_path).exists():
+        csv_bytes = Path(csv_path).read_bytes()
         msg.add_attachment(
-            path.read_bytes(),
+            csv_bytes,
             maintype="text",
             subtype="csv",
-            filename=path.name
+            filename=Path(csv_path).name
         )
 
-
-def _send(msg):
-    with smtplib.SMTP(SMTP_HOST) as smtp:
+    with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as smtp:
+        smtp.starttls()
+        smtp.login(smtp_user, smtp_pass)
         smtp.send_message(msg)
