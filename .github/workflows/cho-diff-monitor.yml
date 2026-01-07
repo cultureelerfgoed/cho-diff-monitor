@@ -59,4 +59,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: cho-diff-csv-${{ env.GISTEREN }}_${{ env.EERGISTEREN }}
-          path: div-cho-*.csv
+          path: diff-cho-*.csv
