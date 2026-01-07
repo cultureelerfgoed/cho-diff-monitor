@@ -1,6 +1,6 @@
 # scripts/mail.py
 #
-# Verstuurt de dagelijkse DIV CHO mail via Gmail (SMTP + App Password).
+# Verstuurt de dagelijkse DIFF CHO mail via Gmail (SMTP + App Password).
 #
 # - HTML-mail
 # - CSV altijd als bijlage
@@ -19,7 +19,7 @@ SMTP_HOST = "smtp.gmail.com"
 SMTP_PORT = 587
 
 FROM_EMAIL = "rce-ldv-monitor@gmail.com"
-FROM_NAME = "DIV CHO monitor"
+FROM_NAME = "DIFF CHO monitor"
 TO_EMAIL = "thesauri@cultureelerfgoed.nl"
 
 
@@ -49,7 +49,7 @@ def _render_html(
         return f"""
         <html>
           <body>
-            <h2>DIV CHO – fout</h2>
+            <h2>DIFF CHO – fout</h2>
             <p>Er is een fout opgetreden bij de dagelijkse vergelijking.</p>
             <pre>{html.escape(error_message)}</pre>
             <p>Datum: {datum_gisteren}</p>
@@ -92,7 +92,7 @@ def _render_html(
     return f"""
     <html>
       <body>
-        <h2>DIV CHO dagelijkse vergelijking</h2>
+        <h2>DIFF CHO dagelijkse vergelijking</h2>
         <p>
           Vergelijking van <b>{datum_gisteren}</b> met <b>{datum_eergisteren}</b>.
         </p>
@@ -144,7 +144,7 @@ def send_report_mail(
     msg = EmailMessage()
     msg["From"] = f"{FROM_NAME} <{FROM_EMAIL}>"
     msg["To"] = TO_EMAIL
-    msg["Subject"] = f"DIV CHO {subject_date}"
+    msg["Subject"] = f"DIFF CHO {subject_date}"
 
     msg.set_content(
         "Deze mail bevat HTML. Gebruik een HTML-geschikte mailclient."
