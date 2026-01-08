@@ -111,8 +111,8 @@ def main():
         f"{datum_gisteren}_{datum_eergisteren}"
     )
 
-    csv_name = f"div-cho-{datum_gisteren}_{datum_eergisteren}.csv"
-    trig_name = f"div-cho-{datum_gisteren}_{datum_eergisteren}.trig"
+    csv_name = f"diff-cho-{datum_gisteren}_{datum_eergisteren}.csv"
+    trig_name = f"diff-cho-{datum_gisteren}_{datum_eergisteren}.trig"
 
     try:
         # 1. SPARQL-vergelijking
