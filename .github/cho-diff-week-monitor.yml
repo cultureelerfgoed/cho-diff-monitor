@@ -1,0 +1,51 @@
+name: CHO diff week monitor
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Maandag 10:00 NL tijd
+    # Wintertijd: 09:00 UTC
+    # Zomertijd: 08:00 UTC (GitHub cron kent geen DST)
+    - cron: "0 9 * * 1"
+
+jobs:
+  cho-diff-week-monitor:
+    runs-on: windows-latest
+
+    env:
+      TRIPLYDB_TOKEN: ${{ secrets.TRIPLYDB_TOKEN }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
+
+      - name: Download TriplyDB CLI (triplydb.exe)
+        shell: pwsh
+        run: |
+          Invoke-WebRequest `
+            -Uri https://static.triply.cc/cli/triplydb.exe `
+            -OutFile triplydb.exe
+
+      - name: Run CHO diff week monitor
+        shell: pwsh
+        env:
+          GMAIL_USERNAME: ${{ secrets.GMAIL_USERNAME }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+        run: |
+          python scripts/compare_week.py
+
+      - name: Upload weekly CSV artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cho-diff-week-csv
+          path: diff-cho-week-*.csv

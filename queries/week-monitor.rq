@@ -1,0 +1,23 @@
+PREFIX ceo: <https://linkeddata.cultureelerfgoed.nl/def/ceo#>
+
+SELECT
+  ?item
+  (COALESCE(?d1, 0) AS ?dag1)
+  (COALESCE(?d2, 0) AS ?dag2)
+  (COALESCE(?d3, 0) AS ?dag3)
+  (COALESCE(?d4, 0) AS ?dag4)
+  (COALESCE(?d5, 0) AS ?dag5)
+  (COALESCE(?d6, 0) AS ?dag6)
+  (COALESCE(?d7, 0) AS ?dag7)
+WHERE {
+
+  OPTIONAL { GRAPH <{{GRAPH_1}}> { ?item ceo:aantalInstanties ?d1 } }
+  OPTIONAL { GRAPH <{{GRAPH_2}}> { ?item ceo:aantalInstanties ?d2 } }
+  OPTIONAL { GRAPH <{{GRAPH_3}}> { ?item ceo:aantalInstanties ?d3 } }
+  OPTIONAL { GRAPH <{{GRAPH_4}}> { ?item ceo:aantalInstanties ?d4 } }
+  OPTIONAL { GRAPH <{{GRAPH_5}}> { ?item ceo:aantalInstanties ?d5 } }
+  OPTIONAL { GRAPH <{{GRAPH_6}}> { ?item ceo:aantalInstanties ?d6 } }
+  OPTIONAL { GRAPH <{{GRAPH_7}}> { ?item ceo:aantalInstanties ?d7 } }
+
+}
+ORDER BY ?item
