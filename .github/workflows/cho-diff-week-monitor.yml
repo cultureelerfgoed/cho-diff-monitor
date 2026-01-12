@@ -42,7 +42,7 @@ jobs:
           GMAIL_USERNAME: ${{ secrets.GMAIL_USERNAME }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
         run: |
-          python scripts/compare_week.py
+          python scripts/compare-week.py
 
       - name: Upload weekly CSV artifact
         uses: actions/upload-artifact@v4
