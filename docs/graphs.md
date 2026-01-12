@@ -1,7 +1,7 @@
 # Graph-afspraken
 
 Dit document beschrijft de afspraken rondom de graphs die worden gebruikt en geproduceerd door de
-DIV CHO producer- en monitor-workflows.
+DIFF CHO producer- en monitor-workflows.
 
 ---
 
@@ -13,7 +13,7 @@ https://linkeddata.cultureelerfgoed.nl/graph/cho-diff/YYYY-MM-DD
 
 Kenmerken:
 - één graph per kalenderdag;
-- bevat de volledige stand van zaken voor die dag;
+- bevat de volledige stand van zaken voor **vandaag**;
 - wordt geproduceerd door de producer-workflow;
 - dient als input voor de monitor-workflow.
 
@@ -26,8 +26,8 @@ Voor elke dagelijkse vergelijking wordt een aparte resultaat-graph aangemaakt me
 https://linkeddata.cultureelerfgoed.nl/graph/cho-diff/YYYY-MM-DD_YYYY-MM-DD
 
 Waarbij:
-- de eerste datum de **bron** is (van);
-- de tweede datum het **referentiepunt** is (tot).
+- de eerste datum **vandaag** is;
+- de tweede datum **gisteren** is.
 
 Kenmerken:
 - één graph per vergelijking;
@@ -45,20 +45,20 @@ https://linkeddata.cultureelerfgoed.nl/def/cho-diff#
 
 Per item worden de volgende eigenschappen vastgelegd:
 
+- diff:aantalVandaag  
+  De waarde in de graph van vandaag.
+
 - diff:aantalGisteren  
   De waarde in de graph van gisteren.
 
-- diff:aantalEergisteren  
-  De waarde in de graph van eergisteren.
-
 - diff:verschil  
-  Het verschil tussen beide waarden.
+  Het verschil tussen vandaag en gisteren.
+
+- diff:datumVandaag  
+  De datum van de graph van vandaag.
 
 - diff:datumGisteren  
-  De datum van de bron-graph.
-
-- diff:datumEergisteren  
-  De datum van de referentie-graph.
+  De datum van de graph van gisteren.
 
 ---
 

@@ -1,7 +1,7 @@
 # Vocabulaire cho-diff
 
 Dit document beschrijft het vocabulaire dat wordt gebruikt in
-resultaat-graphs van de DIV CHO monitor.
+resultaat-graphs van de DIFF CHO monitor.
 
 Dit vocabulaire is uitsluitend bedoeld voor **afgeleide diff-data**.
 
@@ -40,6 +40,13 @@ Het item-IRI fungeert als subject.
 
 ## Eigenschappen
 
+### diff:aantalVandaag
+- betekenis: waarde in de graph van vandaag
+- domein: bestaand CHO-item
+- bereik: xsd:integer
+
+---
+
 ### diff:aantalGisteren
 - betekenis: waarde in de graph van gisteren
 - domein: bestaand CHO-item
@@ -47,31 +54,24 @@ Het item-IRI fungeert als subject.
 
 ---
 
-### diff:aantalEergisteren
-- betekenis: waarde in de graph van eergisteren
-- domein: bestaand CHO-item
-- bereik: xsd:integer
-
----
-
 ### diff:verschil
-- betekenis: verschil tussen beide waarden
+- betekenis: verschil tussen vandaag en gisteren
 - domein: bestaand CHO-item
 - bereik: xsd:integer
 
-Positieve en negatieve waarden zijn beide toegestaan.
+Positieve en negatieve waarden zijn toegestaan.
 
 ---
 
-### diff:datumGisteren
-- betekenis: datum van de bron-graph
+### diff:datumVandaag
+- betekenis: datum van de graph van vandaag
 - domein: bestaand CHO-item
 - bereik: xsd:date
 
 ---
 
-### diff:datumEergisteren
-- betekenis: datum van de referentie-graph
+### diff:datumGisteren
+- betekenis: datum van de graph van gisteren
 - domein: bestaand CHO-item
 - bereik: xsd:date
 
