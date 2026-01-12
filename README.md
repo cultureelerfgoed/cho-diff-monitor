@@ -1,4 +1,4 @@
-# DIV CHO dagelijkse vergelijking
+# DIFF CHO dagelijkse vergelijking
 
 ## Doel
 Deze repository bevat de workflows voor de dagelijkse productie en vergelijking van CHO-gegevens in TriplyDB.
@@ -6,7 +6,7 @@ Deze repository bevat de workflows voor de dagelijkse productie en vergelijking 
 Het proces bestaat uit twee samenhangende stappen:
 
 1. het dagelijks vastleggen van een daggraph (producer),
-2. het dagelijks vergelijken van twee daggraphs (monitor).
+2. het dagelijks vergelijken van twee opeenvolgende daggraphs (monitor).
 
 Elke vergelijking resulteert in:
 - een resultaat-graph in TriplyDB,
@@ -24,7 +24,7 @@ De producer-workflow draait dagelijks en voert de volgende stappen uit:
 
 1. Ophalen van CHO-data via een vaste TriplyDB-query.
 2. Omzetten van het resultaat naar Trig.
-3. Opslaan van de data in een named graph voor die dag.
+3. Opslaan van de data in een named graph voor **vandaag**.
 
 Resultaat:
 - één daggraph per datum.
@@ -37,14 +37,14 @@ De monitor-workflow draait dagelijks en vergelijkt twee bestaande daggraphs.
 De stappen zijn:
 
 1. Bepalen van de datums:
-   - gisteren,
-   - eergisteren.
+   - vandaag,
+   - gisteren.
 2. Controleren of beide daggraphs bestaan.
 3. Uitvoeren van een vergelijking via SPARQL.
 4. Berekenen van verschillen per item.
 5. Genereren van:
    - een CSV met alle resultaten,
-   - een resultaat-graph met alleen diff-informatie.
+   - een resultaat-graph met diff-informatie.
 6. Versturen van een e-mailrapportage.
 
 ---
@@ -65,8 +65,8 @@ Voor elke vergelijking wordt een aparte graph aangemaakt met het formaat:
 
 https://linkeddata.cultureelerfgoed.nl/graph/cho-diff/YYYY-MM-DD_YYYY-MM-DD
 
-De eerste datum is de bron (van).  
-De tweede datum is het referentiepunt (tot).
+De eerste datum is **vandaag**.  
+De tweede datum is **gisteren**.
 
 De graph bevat uitsluitend afgeleide diff-data.
 
@@ -90,13 +90,12 @@ Bronvocabularia (zoals CEO) worden niet hergebruikt voor diff-data.
 De volgende regels zijn van toepassing:
 
 - Elke verandering is een afwijking.
-- Een verschil van +1 is relevant.
-- Een verschil van 0 is relevant.
-- Er worden geen drempels gebruikt.
+- Een verschil van +1 of −1 is relevant.
+- Een verschil van 0 is **geen** afwijking.
 
 Gevolgen:
 - de CSV bevat altijd alle resultaten,
-- de mail toont alleen regels met een verschil niet gelijk aan nul.
+- de mail toont alleen regels met een verschil ongelijk aan nul.
 
 ---
 
@@ -104,12 +103,12 @@ Gevolgen:
 Bij elke monitor-run wordt een CSV gegenereerd met:
 
 - alle items,
-- aantallen voor beide dagen,
+- aantallen voor vandaag en gisteren,
 - het berekende verschil.
 
 De CSV:
 - bevat geen kleurcodering,
-- is bedoeld voor archivering en nadere analyse,
+- is bedoeld voor archivering en analyse,
 - wordt beschikbaar gesteld als workflow-artifact.
 
 ---
@@ -121,7 +120,7 @@ Eigenschappen:
 - ook als alle verschillen 0 zijn,
 - ook bij fouten,
 - onderwerp:
-  DIV CHO YYYY-MM-DD
+  DIFF CHO YYYY-MM-DD
 - ontvanger:
   thesauri@cultureelerfgoed.nl
 

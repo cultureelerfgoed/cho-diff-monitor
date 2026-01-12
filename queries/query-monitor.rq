@@ -2,23 +2,23 @@ PREFIX ceo: <https://linkeddata.cultureelerfgoed.nl/def/ceo#>
 
 SELECT
   ?item
+  (COALESCE(?vandaag, 0) AS ?aantalVandaag)
   (COALESCE(?gisteren, 0) AS ?aantalGisteren)
-  (COALESCE(?eergisteren, 0) AS ?aantalEergisteren)
-  (COALESCE(?gisteren, 0) - COALESCE(?eergisteren, 0) AS ?verschil)
+  (COALESCE(?vandaag, 0) - COALESCE(?gisteren, 0) AS ?verschil)
 WHERE {
   {
-    SELECT ?item (SUM(?c) AS ?gisteren)
+    SELECT ?item (SUM(?c) AS ?vandaag)
     WHERE {
-      GRAPH <{{GRAPH_GISTEREN}}> {
+      GRAPH <{{GRAPH_VANDAAG}}> {
         ?item ceo:aantalInstanties ?c .
       }
     }
     GROUP BY ?item
   }
   OPTIONAL {
-    SELECT ?item (SUM(?c) AS ?eergisteren)
+    SELECT ?item (SUM(?c) AS ?gisteren)
     WHERE {
-      GRAPH <{{GRAPH_EERGISTEREN}}> {
+      GRAPH <{{GRAPH_GISTEREN}}> {
         ?item ceo:aantalInstanties ?c .
       }
     }

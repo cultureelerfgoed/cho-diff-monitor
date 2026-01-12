@@ -6,11 +6,15 @@
 # - CSV altijd als bijlage
 # - item-waarden veilig ge-escaped voor HTML
 # - geschikt voor GitHub Actions
+#
+# De mail rapporteert:
+# - vandaag: nieuwste complete stand
+# - gisteren: referentie
+# - verschil = vandaag − gisteren
 
 import os
 import smtplib
 import html
-import requests
 from email.message import EmailMessage
 from pathlib import Path
 
@@ -38,8 +42,8 @@ def _clean_item(item: str) -> str:
 
 
 def _render_html(
+    datum_vandaag,
     datum_gisteren,
-    datum_eergisteren,
     totaal,
     afwijkingen,
     graph_uri,
@@ -52,7 +56,7 @@ def _render_html(
             <h2>DIFF CHO – fout</h2>
             <p>Er is een fout opgetreden bij de dagelijkse vergelijking.</p>
             <pre>{html.escape(error_message)}</pre>
-            <p>Datum: {datum_gisteren}</p>
+            <p>Datum: {datum_vandaag}</p>
           </body>
         </html>
         """
@@ -65,8 +69,8 @@ def _render_html(
             rows_html += f"""
             <tr>
               <td><code>{item_html}</code></td>
+              <td>{row['aantalVandaag']}</td>
               <td>{row['aantalGisteren']}</td>
-              <td>{row['aantalEergisteren']}</td>
               <td style="color:red;">{row['verschil']}</td>
             </tr>
             """
@@ -76,8 +80,8 @@ def _render_html(
           <thead>
             <tr>
               <th>Item</th>
+              <th>Vandaag</th>
               <th>Gisteren</th>
-              <th>Eergisteren</th>
               <th>Verschil</th>
             </tr>
           </thead>
@@ -94,7 +98,7 @@ def _render_html(
       <body>
         <h2>DIFF CHO dagelijkse vergelijking</h2>
         <p>
-          Vergelijking van <b>{datum_gisteren}</b> met <b>{datum_eergisteren}</b>.
+          Vergelijking van <b>{datum_vandaag}</b> met <b>{datum_gisteren}</b>.
         </p>
         <ul>
           <li>Totaal aantal items: {totaal}</li>
@@ -115,8 +119,8 @@ def _render_html(
 
 def send_report_mail(
     subject_date,
+    datum_vandaag,
     datum_gisteren,
-    datum_eergisteren,
     rows,
     csv_path,
     graph_uri,
@@ -133,8 +137,8 @@ def send_report_mail(
     afwijkingen = [r for r in rows if r.get("verschil") != 0]
 
     html_body = _render_html(
+        datum_vandaag=datum_vandaag,
         datum_gisteren=datum_gisteren,
-        datum_eergisteren=datum_eergisteren,
         totaal=len(rows),
         afwijkingen=afwijkingen,
         graph_uri=graph_uri,

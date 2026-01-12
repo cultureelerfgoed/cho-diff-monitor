@@ -1,20 +1,27 @@
 # scripts/sparql.py
 #
-# Uitvoeren van query-monitor.rq via HTTP SPARQL endpoint
-# Geen TriplyDB CLI nodig voor queries
+# Uitvoeren van query-monitor.rq via HTTP SPARQL endpoint.
+# Geen TriplyDB CLI nodig voor queries.
+#
+# Deze module gaat uit van:
+# - vandaag: nieuwste complete graph
+# - gisteren: referentie-graph
+# - verschil = vandaag − gisteren
 
 import requests
 from pathlib import Path
 
 
-SPARQL_ENDPOINT = "https://api.linkeddata.cultureelerfgoed.nl/datasets/rce/cho/sparql"
+SPARQL_ENDPOINT = (
+    "https://api.linkeddata.cultureelerfgoed.nl/datasets/rce/cho/sparql"
+)
 
 
-def run_monitor_query(query_path, graph_gisteren, graph_eergisteren):
+def run_monitor_query(query_path, graph_vandaag, graph_gisteren):
     query = Path(query_path).read_text(encoding="utf-8")
 
+    query = query.replace("{{GRAPH_VANDAAG}}", graph_vandaag)
     query = query.replace("{{GRAPH_GISTEREN}}", graph_gisteren)
-    query = query.replace("{{GRAPH_EERGISTEREN}}", graph_eergisteren)
 
     headers = {
         "Accept": "text/tab-separated-values"
@@ -35,7 +42,7 @@ def run_monitor_query(query_path, graph_gisteren, graph_eergisteren):
     rows = []
     lines = response.text.splitlines()
 
-    # eerste regel = header
+    # Eerste regel is de header
     for line in lines[1:]:
         if not line.strip():
             continue
@@ -43,8 +50,8 @@ def run_monitor_query(query_path, graph_gisteren, graph_eergisteren):
         parts = line.split("\t")
         rows.append({
             "item": parts[0],
-            "aantalGisteren": int(parts[1]),
-            "aantalEergisteren": int(parts[2]),
+            "aantalVandaag": int(parts[1]),
+            "aantalGisteren": int(parts[2]),
             "verschil": int(parts[3])
         })
 
