@@ -38,10 +38,10 @@ jobs:
         shell: pwsh
         run: |
           $vandaag = (Get-Date).ToString("yyyy-MM-dd")
-          $gisteren = (Get-Date).AddDays(-1).ToString("yyyy-MM-dd")          $eer_gisteren = (Get-Date).AddDays(-2).ToString("yyyy-MM-dd")
+          $gisteren = (Get-Date).AddDays(-1).ToString("yyyy-MM-dd")
+
           echo "VANDAAG=$vandaag" >> $env:GITHUB_ENV
           echo "GISTEREN=$gisteren" >> $env:GITHUB_ENV
-
 
       - name: Run CHO diff monitor
         shell: pwsh

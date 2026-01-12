@@ -1,6 +1,6 @@
-# Architectuur DIV CHO dagelijkse vergelijking
+# Architectuur DIFF CHO dagelijkse vergelijking
 
-Dit document beschrijft de architectuur en ontwerpkeuzes van de DIV CHO
+Dit document beschrijft de architectuur en ontwerpkeuzes van de DIFF CHO
 producer- en monitor-opzet.
 
 Het doel is uitlegbaarheid, onderhoudbaarheid en overdraagbaarheid.
@@ -14,7 +14,7 @@ De oplossing bestaat uit twee gescheiden maar samenhangende processen:
 1. Producer  
 2. Monitor  
 
-Deze scheiding is bewust aangebracht.
+De scheiding is bewust aangebracht en structureel.
 
 ---
 
@@ -22,7 +22,7 @@ Deze scheiding is bewust aangebracht.
 
 ### Verantwoordelijkheid
 De producer is verantwoordelijk voor het dagelijks vastleggen van de
-stand van zaken van CHO-gegevens.
+volledige stand van zaken van CHO-gegevens.
 
 ### Kenmerken
 - draait dagelijks;
@@ -35,7 +35,7 @@ Een daggraph met formaat:
 
 https://linkeddata.cultureelerfgoed.nl/graph/cho-diff/YYYY-MM-DD
 
-Deze graph bevat de volledige stand van zaken voor die dag.
+Deze graph bevat de volledige stand van zaken voor **vandaag**.
 
 ---
 
@@ -46,7 +46,7 @@ De monitor vergelijkt twee opeenvolgende daggraphs en legt de verschillen vast.
 
 ### Kenmerken
 - draait dagelijks;
-- vergelijkt gisteren met eergisteren;
+- vergelijkt **vandaag** met **gisteren**;
 - rekent alle verschillen expliciet uit;
 - gebruikt geen drempels.
 
@@ -73,6 +73,9 @@ Graph-formaat:
 
 https://linkeddata.cultureelerfgoed.nl/graph/cho-diff/YYYY-MM-DD_YYYY-MM-DD
 
+De eerste datum is **vandaag**.  
+De tweede datum is **gisteren**.
+
 ---
 
 ## CSV en mail
@@ -80,18 +83,19 @@ https://linkeddata.cultureelerfgoed.nl/graph/cho-diff/YYYY-MM-DD_YYYY-MM-DD
 ### CSV
 - bevat altijd alle items;
 - bevat ook nul-verschillen;
-- wordt gebruikt voor rapportage en analyse;
+- wordt gebruikt voor analyse en archivering;
+- wordt beschikbaar gesteld als workflow-artifact;
 - wordt als bijlage gemaild.
 
-CSV’s worden niet langdurig opgeslagen buiten de mail.
+CSV’s zijn afgeleide rapportages en geen primaire bron.
 
 ### Mail
 - wordt elke dag verstuurd;
 - ook bij fouten;
-- ook bij nul-verschillen;
+- ook als alle verschillen nul zijn;
 - bevat een samenvatting en een tabel met afwijkingen.
 
-De mail is een **rapportagekanaal**, geen bron.
+De mail is een **rapportagekanaal**, geen gegevensbron.
 
 ---
 
@@ -102,8 +106,8 @@ De mail is een **rapportagekanaal**, geen bron.
 - heldere verantwoordelijkheden;
 - fouten zijn beter te isoleren.
 
-### Explicitie named graphs
-- geen implicit gedrag;
+### Expliciete named graphs
+- geen impliciet gedrag;
 - geen afhankelijkheid van CLI-interpretatie;
 - consistent met bestaande TriplyDB-opzet.
 
