@@ -9,6 +9,22 @@ Het doel is uitlegbaarheid, onderhoudbaarheid en overdraagbaarheid.
 
 ## Overzicht
 
+## Datasets en verantwoordelijkheden
+
+Binnen dit proces worden twee datasets onderscheiden:
+
+- cho  
+  Bevat uitsluitend de actuele brondata van CHO-objecten en wordt niet
+  aangepast door dit proces.
+
+- diff-cho  
+  Bevat alle door dit proces geproduceerde graphs:
+  - dagelijkse snapshots (daggraphs);
+  - afgeleide vergelijking- en diff-graphs.
+
+Alle vastlegging en historische reconstructie vindt plaats in diff-cho.
+
+
 De oplossing bestaat uit twee gescheiden maar samenhangende processen:
 
 1. Producer  
