@@ -50,7 +50,7 @@ def build_index_triples(config: dict, snapshot, previous_snapshot, diff, today):
 
 
 def sparql_insert(endpoint: str, graph_uri: str, rdf_graph: Graph, token: str):
-    data = rdf_graph.serialize(format="turtle")
+    data = rdf_graph.serialize(format="nt")
 
     query = f"""
 INSERT DATA {{
