@@ -1,3 +1,4 @@
+import os
 import yaml
 import datetime
 import requests
@@ -32,7 +33,6 @@ def build_graph_uris(config: dict, today: datetime.date, previous: datetime.date
 
 def build_index_triples(config: dict, snapshot, previous_snapshot, diff, today):
     g = Graph()
-
     PROV = Namespace("http://www.w3.org/ns/prov#")
 
     snapshot_ref = URIRef(snapshot)
@@ -49,21 +49,25 @@ def build_index_triples(config: dict, snapshot, previous_snapshot, diff, today):
     return g
 
 
-def sparql_insert(endpoint: str, graph_uri: str, rdf_graph: Graph):
+def sparql_insert(endpoint: str, graph_uri: str, rdf_graph: Graph, token: str):
     data = rdf_graph.serialize(format="turtle")
 
     query = f"""
-    INSERT DATA {{
-      GRAPH <{graph_uri}> {{
-        {data}
-      }}
-    }}
-    """
+INSERT DATA {{
+  GRAPH <{graph_uri}> {{
+    {data}
+  }}
+}}
+""".strip()
+
+    headers = {"Content-Type": "application/sparql-update"}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
 
     response = requests.post(
         endpoint,
         data=query.encode("utf-8"),
-        headers={"Content-Type": "application/sparql-update"},
+        headers=headers,
         timeout=30,
     )
     response.raise_for_status()
@@ -72,21 +76,21 @@ def sparql_insert(endpoint: str, graph_uri: str, rdf_graph: Graph):
 def main():
     config = load_config("index-graph.yml")
 
+    # token uit env, zodat u niets in YML hoeft te zetten
+    token = os.getenv("TRIPLYDB_TOKEN", "")
+
     today = datetime.date.today()
     previous = today - datetime.timedelta(days=1)
 
-    snapshot, previous_snapshot, diff = build_graph_uris(
-        config, today, previous
-    )
+    snapshot, previous_snapshot, diff = build_graph_uris(config, today, previous)
 
-    index_graph = build_index_triples(
-        config, snapshot, previous_snapshot, diff, today
-    )
+    index_graph = build_index_triples(config, snapshot, previous_snapshot, diff, today)
 
     sparql_insert(
         config["sparql_endpoint"]["update"],
         config["index_graph"]["uri"],
         index_graph,
+        token,
     )
 
 
