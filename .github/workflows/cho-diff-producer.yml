@@ -94,4 +94,14 @@ jobs:
           TRIPLYDB_TOKEN: ${{ secrets.TRIPLYDB_TOKEN }}
         run: |
           python index_graph.py
+          
+      - name: Upload index.trig naar rce/diff-cho
+        shell: pwsh
+        run: |
+          .\triplydb.exe import-from-file `
+            --account rce `
+            --dataset diff-cho `
+            --token "${{ secrets.TRIPLYDB_TOKEN }}" `
+            --url https://api.linkeddata.cultureelerfgoed.nl `
+            index.trig
 
