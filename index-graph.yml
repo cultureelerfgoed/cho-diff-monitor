@@ -6,8 +6,8 @@ graphs:
   diff_base: https://linkeddata.cultureelerfgoed.nl/rce/diff-cho/graph
 
 naming:
-  snapshot: "graph:{date}"
-  diff: "graph:{date}_{previous_date}"
+  snapshot: "{date}"
+  diff: "{date}_{previous_date}"
 
 provenance:
   date_predicate: http://purl.org/dc/terms/date
@@ -16,6 +16,3 @@ provenance:
 
 dates:
   format: "%Y-%m-%d"
-
-sparql_endpoint:
-  update: https://api.linkeddata.cultureelerfgoed.nl/datasets/rce/diff-cho/sparql
