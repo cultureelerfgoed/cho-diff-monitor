@@ -1,0 +1,21 @@
+index_graph:
+  uri: https://linkeddata.cultureelerfgoed.nl/rce/diff-cho/graph/index
+
+graphs:
+  snapshot_base: https://linkeddata.cultureelerfgoed.nl/rce/diff-cho/graph
+  diff_base: https://linkeddata.cultureelerfgoed.nl/rce/diff-cho/graph
+
+naming:
+  snapshot: "graph:{date}"
+  diff: "graph:{date}_{previous_date}"
+
+provenance:
+  date_predicate: http://purl.org/dc/terms/date
+  derived_from: http://www.w3.org/ns/prov#wasDerivedFrom
+  used: http://www.w3.org/ns/prov#used
+
+dates:
+  format: "%Y-%m-%d"
+
+sparql_endpoint:
+  update: https://linkeddata.cultureelerfgoed.nl/sparql
