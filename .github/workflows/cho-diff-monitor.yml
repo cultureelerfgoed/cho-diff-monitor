@@ -52,8 +52,8 @@ jobs:
           python scripts/compare.py `
             "$env:VANDAAG" `
             "$env:GISTEREN" `
-            "https://linkeddata.cultureelerfgoed.nl/graph/cho-diff/$env:VANDAAG" `
-            "https://linkeddata.cultureelerfgoed.nl/graph/cho-diff/$env:GISTEREN"
+            "https://linkeddata.cultureelerfgoed.nl/rce/diff-cho/graph/$env:VANDAAG" `
+            "https://linkeddata.cultureelerfgoed.nl/rce/diff-cho/graph/$env:GISTEREN"
 
       - name: Upload CSV artifact
         uses: actions/upload-artifact@v4

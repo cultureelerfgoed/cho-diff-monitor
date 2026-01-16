@@ -58,7 +58,7 @@ jobs:
             }
           }
 
-          $graphUri = "<https://linkeddata.cultureelerfgoed.nl/graph/cho-diff/$datum>"
+          $graphUri = "<https://linkeddata.cultureelerfgoed.nl/rce/diff-cho/graph/$datum>"
           $lines = @()
           $lines += $prefixes
           $lines += ""
@@ -77,7 +77,7 @@ jobs:
         run: |
           .\triplydb.exe import-from-file `
             --account rce `
-            --dataset cho `
+            --dataset diff-cho `
             --token "${{ secrets.TRIPLYDB_TOKEN }}" `
             --url https://api.linkeddata.cultureelerfgoed.nl `
             diff.trig

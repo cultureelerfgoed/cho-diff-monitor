@@ -10,7 +10,7 @@ from pathlib import Path
 
 
 SPARQL_ENDPOINT = (
-    "https://api.linkeddata.cultureelerfgoed.nl/datasets/rce/cho/sparql"
+    "https://api.linkeddata.cultureelerfgoed.nl/datasets/rce/diff-cho/sparql"
 )
 
 # -------------------------------------------------

@@ -48,7 +48,7 @@ def build_graph_uris(dates):
     Bouwt graph-URI's op basis van datums.
     """
     return [
-        f"https://linkeddata.cultureelerfgoed.nl/graph/cho-diff/{d.isoformat()}"
+        f"https://linkeddata.cultureelerfgoed.nl/rce/diff-cho/graph/{d.isoformat()}"
         for d in dates
     ]
 

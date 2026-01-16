@@ -84,7 +84,7 @@ def upload_graph(trig_file):
             "./triplydb.exe",
             "import-from-file",
             "--account", "rce",
-            "--dataset", "cho",
+            "--dataset", "diff-cho",
             "--token", token,
             "--url", "https://api.linkeddata.cultureelerfgoed.nl",
             trig_file
@@ -110,7 +110,7 @@ def main():
     graph_gisteren = sys.argv[4]
 
     result_graph_uri = (
-        "https://linkeddata.cultureelerfgoed.nl/graph/cho-diff/"
+        "https://linkeddata.cultureelerfgoed.nl/rce/diff-cho/graph/"
         f"{datum_vandaag}_{datum_gisteren}"
     )
 
