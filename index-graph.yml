@@ -18,4 +18,4 @@ dates:
   format: "%Y-%m-%d"
 
 sparql_endpoint:
-  update: https://linkeddata.cultureelerfgoed.nl/sparql
+  update: https://api.linkeddata.cultureelerfgoed.nl/datasets/rce/diff-cho/sparql
