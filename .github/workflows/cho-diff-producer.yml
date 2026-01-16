@@ -81,3 +81,8 @@ jobs:
             --token "${{ secrets.TRIPLYDB_TOKEN }}" `
             --url https://api.linkeddata.cultureelerfgoed.nl `
             diff.trig
+            
+      - name: Update index graph
+        shell: pwsh
+        run: |
+          python index_graph.py
