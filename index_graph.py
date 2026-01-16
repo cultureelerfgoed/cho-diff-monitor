@@ -1,4 +1,4 @@
-import yml
+import yaml
 import datetime
 import requests
 
