@@ -9,7 +9,7 @@ Het doel is uitlegbaarheid, onderhoudbaarheid en overdraagbaarheid.
 
 ## Overzicht
 
-## Datasets en verantwoordelijkheden
+### Datasets en verantwoordelijkheden
 
 Binnen dit proces worden twee datasets onderscheiden:
 
@@ -24,6 +24,11 @@ Binnen dit proces worden twee datasets onderscheiden:
 
 Alle vastlegging en historische reconstructie vindt plaats in diff-cho.
 
+### Tijddefinitie en afronding van dagstanden
+Binnen dit proces wordt gewerkt met kalenderdagen op basis van Nederlandse tijd (CET/CEST).
+Een dagstand wordt als afgerond beschouwd nadat de brondata volledig is verwerkt en beschikbaar is gesteld in de LDV. In de praktijk is dit rond 04:00 uur ’s nachts.
+De producer- en monitor-workflows draaien pas na dit moment, zodat uitsluitend volledige en stabiele dagstanden worden vastgelegd en vergeleken.
+Cron-tijden in GitHub Actions zijn ingesteld in UTC en zodanig gekozen dat zij in zowel zomer- als wintertijd na afronding van de dagverwerking plaatsvinden.
 
 De oplossing bestaat uit twee gescheiden maar samenhangende processen:
 
@@ -131,6 +136,10 @@ De mail is een **rapportagekanaal**, geen gegevensbron.
 - diff-data is geen domeindata;
 - semantische vervuiling wordt voorkomen;
 - interpretatie blijft zuiver.
+
+### Geen automatische correcties
+Dit proces voert geen correcties of herstelacties uit op de data.
+Het systeem signaleert verschillen en afwijkingen, maar past geen gegevens aan. Interpretatie, analyse en eventuele correcties vinden buiten dit proces plaats.
 
 ---
 
