@@ -21,7 +21,8 @@ import subprocess
 import os
 from pathlib import Path
 
-from sparql import run_monitor_query
+from sparql import run_monitor_query, check_graph_exists
+
 from mail import send_report_mail
 
 

@@ -14,6 +14,42 @@ SPARQL_ENDPOINT = (
 )
 
 # -------------------------------------------------
+# Hulpfuncties
+# -------------------------------------------------
+
+def check_graph_exists(graph_uri):
+    """
+    Controleert of een named graph bestaat en ten minste één triple bevat.
+    """
+    ask_query = f"""
+    ASK {{
+      GRAPH <{graph_uri}> {{
+        ?s ?p ?o
+      }}
+    }}
+    """
+
+    headers = {
+        "Accept": "application/sparql-results+json"
+    }
+
+    response = requests.post(
+        SPARQL_ENDPOINT,
+        data={"query": ask_query},
+        headers=headers,
+        timeout=30
+    )
+
+    if response.status_code != 200:
+        raise RuntimeError(
+            f"Graph-check mislukt voor {graph_uri} "
+            f"({response.status_code})"
+        )
+
+    result = response.json()
+    return bool(result.get("boolean"))
+
+# -------------------------------------------------
 # Dagmonitor
 # -------------------------------------------------
 

@@ -120,6 +120,71 @@ De mail is een **rapportagekanaal**, geen gegevensbron.
 
 ---
 
+## Foutafhandeling
+
+Het proces is expliciet ingericht om fouten zichtbaar te maken en
+deterministisch te falen. Er zijn geen stille fouten en geen impliciete
+herstelacties.
+
+### Ontbrekende daggraphs
+
+Voorafgaand aan elke vergelijking controleert de monitor of de vereiste
+daggraphs bestaan.
+
+Als één of meerdere daggraphs ontbreken:
+
+- wordt de vergelijking niet uitgevoerd;
+- wordt geen resultaat-graph aangemaakt;
+- wordt een foutmelding per e-mail verstuurd.
+
+De foutmelding vermeldt expliciet welke datum(s) ontbreken.
+
+Dit scenario duidt doorgaans op:
+- een niet uitgevoerde producer-run;
+- een mislukte upload van een daggraph.
+
+### SPARQL-fouten
+
+Als een SPARQL-query faalt (bijvoorbeeld door een endpoint-probleem of
+ongeldige respons):
+
+- stopt de verwerking onmiddellijk;
+- worden geen afgeleide resultaten gegenereerd;
+- wordt een foutmelding per e-mail verstuurd met de technische foutmelding.
+
+Er wordt geen retry-logica toegepast.
+
+### Uploadfouten
+
+Als het opslaan van een resultaat-graph mislukt:
+
+- stopt het proces;
+- wordt geen gedeeltelijk resultaat achtergelaten;
+- wordt een foutmelding per e-mail verstuurd.
+
+Hierdoor blijft de dataset vrij van incomplete of inconsistente graphs.
+
+### Rapportage bij fouten
+
+Ook bij fouten wordt altijd een e-mail verstuurd.
+
+De e-mail bevat:
+- een duidelijke foutmelding;
+- de context (datum of week waarop de fout betrekking heeft);
+- geen gedeeltelijke resultaten.
+
+CSV-bestanden worden bij fouten niet gegenereerd of meegestuurd.
+
+### Geen automatische correcties
+
+Het proces voert geen automatische correcties of herstelacties uit.
+
+Fouten worden gesignaleerd en gerapporteerd, maar niet gemaskeerd of
+automatisch opgelost. Analyse en eventuele correcties vinden buiten dit
+proces plaats.
+
+---
+
 ## Ontwerpkeuzes
 
 ### Gescheiden producer en monitor

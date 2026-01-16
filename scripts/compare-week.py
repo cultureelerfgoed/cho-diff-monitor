@@ -17,7 +17,7 @@ from pathlib import Path
 import csv
 import os
 
-from sparql import run_week_monitor_query
+from sparql import run_week_monitor_query, check_graph_exists
 from mail_week import send_week_report_mail
 
 
@@ -74,7 +74,20 @@ def main():
         f"{week_dates[0].isoformat()}_"
         f"{week_dates[-1].isoformat()}"
     )
+    
+# Controleer of alle daggraphs voor de week bestaan
+    ontbrekende_datums = []
 
+    for datum, graph_uri in zip(week_dates, graph_uris):
+        if not check_graph_exists(graph_uri):
+            ontbrekende_datums.append(datum.isoformat())
+
+    if ontbrekende_datums:
+        raise RuntimeError(
+            "Ontbrekende daggraph(s) voor weekmonitor: "
+            + ", ".join(ontbrekende_datums)
+        )
+        
     # 2. SPARQL uitvoeren
     rows = run_week_monitor_query(
         QUERY_PATH,
