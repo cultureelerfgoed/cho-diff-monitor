@@ -1,10 +1,7 @@
-import os
 import yaml
 import datetime
-import requests
-
-from rdflib import Graph, URIRef, Literal
-from rdflib.namespace import DCTERMS, XSD, Namespace
+from rdflib import Graph, URIRef, Literal, Namespace
+from rdflib.namespace import DCTERMS, XSD
 
 
 def load_config(path: str) -> dict:
@@ -25,23 +22,31 @@ def build_graph_uris(config: dict, today: datetime.date, previous: datetime.date
 
     diff_uri = (
         f"{config['graphs']['diff_base']}/"
-        f"{config['naming']['diff'].format(date=today.isoformat(), previous_date=previous.isoformat())}"
+        f"{config['naming']['diff'].format(
+            date=today.isoformat(),
+            previous_date=previous.isoformat()
+        )}"
     )
 
     return snapshot_uri, previous_snapshot_uri, diff_uri
 
 
-def build_index_triples(config: dict, snapshot, previous_snapshot, diff, today):
+def build_index_graph(config: dict, snapshot, previous_snapshot, diff, today):
     g = Graph()
     PROV = Namespace("http://www.w3.org/ns/prov#")
+
+    index_graph_uri = URIRef(config["index_graph"]["uri"])
+    g = Graph(identifier=index_graph_uri)
 
     snapshot_ref = URIRef(snapshot)
     previous_ref = URIRef(previous_snapshot)
     diff_ref = URIRef(diff)
 
+    # snapshot metadata
     g.add((snapshot_ref, DCTERMS.date, Literal(today.isoformat(), datatype=XSD.date)))
     g.add((snapshot_ref, PROV.wasDerivedFrom, previous_ref))
 
+    # diff metadata
     g.add((diff_ref, DCTERMS.date, Literal(today.isoformat(), datatype=XSD.date)))
     g.add((diff_ref, PROV.used, snapshot_ref))
     g.add((diff_ref, PROV.used, previous_ref))
@@ -49,49 +54,22 @@ def build_index_triples(config: dict, snapshot, previous_snapshot, diff, today):
     return g
 
 
-def sparql_insert(endpoint: str, graph_uri: str, rdf_graph: Graph, token: str):
-    data = rdf_graph.serialize(format="nt")
-
-    query = f"""
-INSERT DATA {{
-  GRAPH <{graph_uri}> {{
-    {data}
-  }}
-}}
-""".strip()
-
-    headers = {"Content-Type": "application/sparql-update"}
-    if token:
-        headers["Authorization"] = f"Bearer {token}"
-
-    response = requests.post(
-        endpoint,
-        data=query.encode("utf-8"),
-        headers=headers,
-        timeout=30,
-    )
-    response.raise_for_status()
-
-
 def main():
     config = load_config("index-graph.yml")
-
-    # token uit env, zodat u niets in YML hoeft te zetten
-    token = os.getenv("TRIPLYDB_TOKEN", "")
 
     today = datetime.date.today()
     previous = today - datetime.timedelta(days=1)
 
-    snapshot, previous_snapshot, diff = build_graph_uris(config, today, previous)
-
-    index_graph = build_index_triples(config, snapshot, previous_snapshot, diff, today)
-
-    sparql_insert(
-        config["sparql_endpoint"]["update"],
-        config["index_graph"]["uri"],
-        index_graph,
-        token,
+    snapshot, previous_snapshot, diff = build_graph_uris(
+        config, today, previous
     )
+
+    index_graph = build_index_graph(
+        config, snapshot, previous_snapshot, diff, today
+    )
+
+    # schrijf TRIG-bestand
+    index_graph.serialize("index.trig", format="trig")
 
 
 if __name__ == "__main__":
