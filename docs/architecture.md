@@ -33,7 +33,7 @@ volledige stand van zaken van CHO-gegevens.
 ### Output
 Een daggraph met formaat:
 
-https://linkeddata.cultureelerfgoed.nl/graph/cho-diff/YYYY-MM-DD
+https://linkeddata.cultureelerfgoed.nl/rce/diff-cho/graph/YYYY-MM-DD
 
 Deze graph bevat de volledige stand van zaken voor **vandaag**.
 
@@ -71,7 +71,7 @@ Eigenschappen:
 
 Graph-formaat:
 
-https://linkeddata.cultureelerfgoed.nl/graph/cho-diff/YYYY-MM-DD_YYYY-MM-DD
+https://linkeddata.cultureelerfgoed.nl/rce/diff-cho/graph/YYYY-MM-DD_YYYY-MM-DD
 
 De eerste datum is **vandaag**.  
 De tweede datum is **gisteren**.

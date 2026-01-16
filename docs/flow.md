@@ -16,7 +16,7 @@ Samen zorgen zij voor dagelijkse vastlegging en vergelijking van CHO-gegevens.
 4. Het resultaat wordt omgezet naar Trig.
 5. De data wordt opgeslagen in een named graph met formaat:
 
-   https://linkeddata.cultureelerfgoed.nl/graph/cho-diff/YYYY-MM-DD
+   https://linkeddata.cultureelerfgoed.nl/rce/diff-cho/graph/YYYY-MM-DD
 
 Resultaat:
 - één daggraph per datum.
@@ -36,7 +36,7 @@ De daggraph bevat de volledige stand van zaken voor **vandaag**.
 7. Een CSV met alle resultaten wordt gegenereerd.
 8. Een resultaat-graph wordt opgebouwd en opgeslagen met formaat:
 
-   https://linkeddata.cultureelerfgoed.nl/graph/cho-diff/YYYY-MM-DD_YYYY-MM-DD
+   https://linkeddata.cultureelerfgoed.nl/rce/diff-cho/graph/YYYY-MM-DD_YYYY-MM-DD
 
    De eerste datum is **vandaag**.  
    De tweede datum is **gisteren**.

@@ -9,7 +9,7 @@ DIFF CHO producer- en monitor-workflows.
 
 Dagelijkse CHO-graphs hebben het volgende formaat:
 
-https://linkeddata.cultureelerfgoed.nl/graph/cho-diff/YYYY-MM-DD
+https://linkeddata.cultureelerfgoed.nl/rce/diff-cho/graph/YYYY-MM-DD
 
 Kenmerken:
 - één graph per kalenderdag;
@@ -23,7 +23,7 @@ Kenmerken:
 
 Voor elke dagelijkse vergelijking wordt een aparte resultaat-graph aangemaakt met het formaat:
 
-https://linkeddata.cultureelerfgoed.nl/graph/cho-diff/YYYY-MM-DD_YYYY-MM-DD
+https://linkeddata.cultureelerfgoed.nl/rce/diff-cho/graph/YYYY-MM-DD_YYYY-MM-DD
 
 Waarbij:
 - de eerste datum **vandaag** is;

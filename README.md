@@ -54,7 +54,7 @@ De stappen zijn:
 ### Input-graphs (daggraphs)
 Dagelijkse CHO-graphs hebben het formaat:
 
-https://linkeddata.cultureelerfgoed.nl/graph/cho-diff/YYYY-MM-DD
+https://linkeddata.cultureelerfgoed.nl/rce/diff-cho/graph/YYYY-MM-DD
 
 Elke graph bevat de volledige stand van zaken voor één dag.
 
@@ -63,7 +63,7 @@ Elke graph bevat de volledige stand van zaken voor één dag.
 ### Resultaat-graphs (vergelijkingen)
 Voor elke vergelijking wordt een aparte graph aangemaakt met het formaat:
 
-https://linkeddata.cultureelerfgoed.nl/graph/cho-diff/YYYY-MM-DD_YYYY-MM-DD
+https://linkeddata.cultureelerfgoed.nl/rce/diff-cho/graph/YYYY-MM-DD_YYYY-MM-DD
 
 De eerste datum is **vandaag**.  
 De tweede datum is **gisteren**.

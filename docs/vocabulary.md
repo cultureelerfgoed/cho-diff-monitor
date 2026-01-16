@@ -20,7 +20,7 @@ diff:
 
 Het vocabulaire wordt uitsluitend gebruikt in resultaat-graphs met formaat:
 
-https://linkeddata.cultureelerfgoed.nl/graph/cho-diff/YYYY-MM-DD_YYYY-MM-DD
+https://linkeddata.cultureelerfgoed.nl/rce/diff-cho/graph/YYYY-MM-DD_YYYY-MM-DD
 
 Het vocabulaire wordt niet gebruikt in:
 - daggraphs;
