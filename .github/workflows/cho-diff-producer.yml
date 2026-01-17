@@ -36,7 +36,7 @@ jobs:
             "https://api.linkeddata.cultureelerfgoed.nl/queries/rce/Query-11-4/2/run?page=1&pageSize=1000" `
             -o diff.ttl
 
-      - name: Zet diff.ttl om naar correcte diff.trig met named graph
+      - name: Zet diff.ttl om naar diff.trig met named graph
         shell: pwsh
         run: |
           $datum = "${{ steps.datum.outputs.vandaag }}"
@@ -72,7 +72,7 @@ jobs:
             [System.Text.Encoding]::UTF8
           )
 
-      - name: Upload diff.trig naar rce/cho via import-from-file
+      - name: Upload diff.trig (historisch)
         shell: pwsh
         run: |
           .\triplydb.exe import-from-file `
@@ -88,20 +88,20 @@ jobs:
           python -m pip install --upgrade pip
           pip install pyyaml rdflib requests
 
-      - name: Update index graph
+      - name: Bouw index.trig
         shell: pwsh
         env:
           TRIPLYDB_TOKEN: ${{ secrets.TRIPLYDB_TOKEN }}
         run: |
           python index_graph.py
-          
-      - name: Upload index.trig naar rce/diff-cho
-              shell: pwsh
-              run: |
-                .\triplydb.exe import-from-file `
-                  --account rce `
-                  --dataset diff-cho `
-                  --token "${{ secrets.TRIPLYDB_TOKEN }}" `
-                  --url https://api.linkeddata.cultureelerfgoed.nl `
+
+      - name: Upload index.trig (state, overwrite)
+        shell: pwsh
+        run: |
+          .\triplydb.exe import-from-file `
+            --account rce `
+            --dataset diff-cho `
+            --token "${{ secrets.TRIPLYDB_TOKEN }}" `
+            --url https://api.linkeddata.cultureelerfgoed.nl `
             --mode overwrite `
             index.trig
