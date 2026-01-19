@@ -29,6 +29,7 @@ Binnen dit proces wordt gewerkt met kalenderdagen op basis van Nederlandse tijd 
 Een dagstand wordt als afgerond beschouwd nadat de brondata volledig is verwerkt en beschikbaar is gesteld in de LDV. In de praktijk is dit rond 04:00 uur ’s nachts.
 De producer- en monitor-workflows draaien pas na dit moment, zodat uitsluitend volledige en stabiele dagstanden worden vastgelegd en vergeleken.
 Cron-tijden in GitHub Actions zijn ingesteld in UTC en zodanig gekozen dat zij in zowel zomer- als wintertijd na afronding van de dagverwerking plaatsvinden.
+Het systeem volgt expliciet kalenderdagen en niet dynamische “latest”-logica.
 
 De oplossing bestaat uit twee gescheiden maar samenhangende processen:
 
@@ -52,11 +53,33 @@ volledige stand van zaken van CHO-gegevens.
 - overschrijft geen bestaande graphs.
 
 ### Output
-Een daggraph met formaat:
+Een daggraph (snapshot) met formaat:
 
 https://linkeddata.cultureelerfgoed.nl/rce/diff-cho/graph/YYYY-MM-DD
 
 Deze graph bevat de volledige stand van zaken voor **vandaag**.
+
+---
+
+## Index
+
+### Verantwoordelijkheid
+De index-graph fungeert als actueel navigatiepunt binnen de dataset diff-cho.
+
+De index:
+- legt vast welke daggraph en welke diff-graph de meest recente zijn;
+- bevat uitsluitend metadata (geen inhoudelijke CHO-data);
+- wordt dagelijks volledig overschreven.
+
+### Kenmerken
+- precies één index-graph is actief;
+- de index bevat geen historie;
+- historie is volledig afleidbaar uit daggraphs en diff-graphs.
+
+### Graph
+https://linkeddata.cultureelerfgoed.nl/rce/diff-cho/graph/index
+
+De index-graph wordt uitsluitend geschreven door de producer.
 
 ---
 
@@ -78,11 +101,23 @@ De monitor produceert drie vormen van output:
 2. CSV-bestand (secundair)
 3. E-mailrapportage (afgeleid)
 
+### Weekmonitor
+
+Naast de dagelijkse monitor bestaat een weekmonitor.
+
+Kenmerken:
+- draait wekelijks (maandag);
+- vergelijkt een volledige kalenderweek (maandag t/m zondag);
+- valideert expliciet of alle daggraphs aanwezig zijn;
+- genereert uitsluitend CSV en e-mail.
+
+De weekmonitor schrijft geen graphs naar TriplyDB.
+
 ---
 
 ## Resultaat-graph als primaire bron
 
-De resultaat-graph is de **bron van waarheid**.
+De resultaat-graph is de bron van waarheid voor monitoring en rapportage, niet voor brondata.
 
 Eigenschappen:
 - bevat uitsluitend afgeleide diff-data;
