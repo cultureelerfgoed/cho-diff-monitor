@@ -93,7 +93,7 @@ jobs:
         env:
           TRIPLYDB_TOKEN: ${{ secrets.TRIPLYDB_TOKEN }}
         run: |
-          python index_graph.py
+          python scripts/index-graph.py
           
       - name: Upload index.trig naar rce/diff-cho
         shell: pwsh
