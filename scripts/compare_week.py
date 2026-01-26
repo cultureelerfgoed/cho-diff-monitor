@@ -1,4 +1,4 @@
-# scripts/compare-week.py
+# scripts/compare_week.py
 #
 # CHO diff week monitor – hoofdscript
 #
@@ -18,7 +18,7 @@ import csv
 import os
 
 from sparql import run_week_monitor_query, check_graph_exists
-from mail-week import send_week_report_mail
+from mail_week import send_week_report_mail
 
 
 QUERY_PATH = "queries/week-monitor.rq"
