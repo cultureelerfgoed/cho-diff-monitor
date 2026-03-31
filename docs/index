@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>Analyse pagina's</title>
+  </head>
+  <body>
+    <h1>Analyse overzicht</h1>
+    <ul>
+      <li><a href="linked-data-analyse-agent_1.html">Analyse agent 1</a></li>
+      <!-- voeg hier meer bestanden toe -->
+    </ul>
+  </body>
+</html>
