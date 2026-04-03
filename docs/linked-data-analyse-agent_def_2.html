@@ -1,0 +1,2114 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Linked Data Analyse Agent — CEO</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap');
+
+  :root {
+    --bg: #0a0c10;
+    --surface: #111318;
+    --surface2: #1a1d25;
+    --border: #252933;
+    --accent: #4ade80;
+    --accent2: #60a5fa;
+    --accent3: #f59e0b;
+    --danger: #f87171;
+    --purple: #a78bfa;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --mono: 'Space Mono', monospace;
+    --sans: 'Syne', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(74,222,128,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(74,222,128,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .app {
+    position: relative;
+    z-index: 1;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 32px 24px;
+  }
+
+  header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 32px;
+    gap: 20px;
+  }
+
+  .logo-area h1 { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; line-height: 1.1; }
+  .logo-area h1 span { color: var(--accent); }
+  .logo-area p { color: var(--muted); font-size: 13px; font-family: var(--mono); margin-top: 6px; }
+
+  .status-badge {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 8px 14px;
+    font-family: var(--mono); font-size: 12px; color: var(--muted); white-space: nowrap; flex-shrink: 0;
+  }
+
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); animation: pulse 2s infinite; }
+
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  /* MODE TABS */
+  .mode-tabs {
+    display: flex; gap: 0; margin-bottom: 28px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 4px; width: fit-content;
+  }
+
+  .mode-tab {
+    padding: 10px 24px; border: none; border-radius: 7px;
+    background: none; color: var(--muted);
+    font-family: var(--sans); font-size: 14px; font-weight: 600;
+    cursor: pointer; transition: all 0.15s;
+    display: flex; align-items: center; gap: 8px;
+  }
+
+  .mode-tab.active { background: var(--surface2); color: var(--text); box-shadow: 0 1px 4px rgba(0,0,0,0.5); }
+  .mode-tab:hover:not(.active) { color: var(--text); }
+
+  /* UPLOAD */
+  .upload-zone {
+    border: 2px dashed var(--border); border-radius: 12px;
+    padding: 36px; text-align: center; cursor: pointer;
+    transition: all 0.2s; background: var(--surface); margin-bottom: 0;
+  }
+
+  .upload-zone:hover, .upload-zone.dragover { border-color: var(--accent); background: rgba(74,222,128,0.04); }
+  .upload-icon { font-size: 34px; margin-bottom: 10px; }
+  .upload-zone h3 { font-size: 15px; font-weight: 700; margin-bottom: 5px; }
+  .upload-zone p { color: var(--muted); font-size: 12px; font-family: var(--mono); line-height: 1.6; }
+  /* Voorkom dat child-elementen drag-events onderscheppen */
+  .upload-zone > *:not(input) { pointer-events: none; }
+  input[type="file"] { display: none; }
+
+  /* FILE LIST (week) */
+  .upload-section { margin-bottom: 28px; }
+
+  .week-files-header {
+    display: flex; align-items: center; justify-content: space-between; margin: 16px 0 10px;
+  }
+
+  .week-files-header h3 { font-size: 15px; font-weight: 700; }
+
+  .clear-btn {
+    background: none; border: 1px solid var(--border); border-radius: 6px;
+    padding: 5px 12px; color: var(--muted); font-family: var(--mono); font-size: 11px; cursor: pointer; transition: all 0.15s;
+  }
+
+  .clear-btn:hover { border-color: var(--danger); color: var(--danger); }
+
+  .file-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+
+  .file-pill {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 14px; font-size: 13px; transition: border-color 0.15s;
+  }
+
+  .file-pill.valid { border-color: rgba(74,222,128,0.3); }
+  .file-pill.nodate { border-color: rgba(245,158,11,0.3); }
+  .file-pill-icon { font-size: 16px; flex-shrink: 0; }
+  .file-pill-info { flex: 1; min-width: 0; }
+  .file-pill-name { font-family: var(--mono); font-size: 12px; color: var(--accent2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .file-pill-meta { font-size: 11px; color: var(--muted); font-family: var(--mono); margin-top: 2px; }
+
+  .date-input {
+    background: var(--surface2); border: 1px solid var(--border); border-radius: 4px;
+    padding: 4px 8px; color: var(--text); font-family: var(--mono); font-size: 11px; width: 128px;
+  }
+
+  .date-input:focus { outline: none; border-color: var(--accent2); }
+
+  .file-remove {
+    background: none; border: none; color: var(--muted); cursor: pointer;
+    font-size: 16px; padding: 2px 4px; line-height: 1; transition: color 0.15s; flex-shrink: 0;
+  }
+
+  .file-remove:hover { color: var(--danger); }
+
+  /* AGENTS */
+  .agents-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .agents-header h2 { font-size: 17px; font-weight: 700; }
+
+  .run-all-btn {
+    background: var(--accent); color: #000; border: none; border-radius: 8px;
+    padding: 9px 18px; font-family: var(--sans); font-size: 13px; font-weight: 700;
+    cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 6px;
+  }
+
+  .run-all-btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
+  .run-all-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  .agents-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(320px,1fr)); gap: 14px; margin-bottom: 28px; }
+
+  .agent-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 18px; cursor: pointer; transition: all 0.2s; position: relative; overflow: hidden;
+  }
+
+  .agent-card::before {
+    content:''; position:absolute; top:0;left:0;right:0; height:3px;
+    background:var(--card-color,var(--accent)); opacity:0; transition:opacity 0.2s;
+  }
+
+  .agent-card:hover::before,.agent-card.active::before { opacity:1; }
+  .agent-card:hover { border-color:var(--card-color,var(--accent)); transform:translateY(-2px); }
+  .agent-card.active { border-color:var(--card-color,var(--accent)); background:var(--surface2); }
+  .agent-card.disabled { opacity:0.4; pointer-events:none; }
+
+  .agent-card-header { display:flex; align-items:flex-start; gap:10px; margin-bottom:8px; }
+  .agent-icon { font-size:22px; flex-shrink:0; margin-top:2px; }
+  .agent-card h3 { font-size:14px; font-weight:700; line-height:1.3; }
+  .agent-card p { font-size:11px; color:var(--muted); line-height:1.5; font-family:var(--mono); }
+  .agent-badges { display:flex; gap:4px; flex-wrap:wrap; margin-bottom:4px; }
+
+  .badge {
+    display:inline-block; border-radius:4px; padding:1px 7px;
+    font-size:10px; font-family:var(--mono); font-weight:700;
+    text-transform:uppercase; letter-spacing:.04em;
+  }
+
+  .badge.local { background:rgba(74,222,128,0.12); color:var(--accent); }
+  .badge.ai { background:rgba(245,158,11,0.12); color:var(--accent3); }
+  .badge.week { background:rgba(167,139,250,0.12); color:var(--purple); }
+  .badge.dag { background:rgba(96,165,250,0.12); color:var(--accent2); }
+
+  .agent-status {
+    display:inline-flex; align-items:center; gap:4px;
+    font-size:11px; font-family:var(--mono); margin-top:8px;
+    padding:3px 8px; border-radius:4px; background:rgba(255,255,255,0.04); color:var(--muted);
+  }
+
+  .agent-status.running { color:var(--accent3); background:rgba(245,158,11,0.1); }
+  .agent-status.done { color:var(--accent); background:rgba(74,222,128,0.1); }
+  .agent-status.error { color:var(--danger); background:rgba(248,113,113,0.1); }
+
+  /* RESULTS */
+  .results-panel { background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; margin-bottom:28px; }
+
+  .results-panel-header {
+    padding:14px 18px; border-bottom:1px solid var(--border);
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
+  }
+
+  .results-panel-header h3 { font-size:14px; font-weight:700; display:flex; align-items:center; gap:8px; }
+
+  .results-panel-body { padding:20px; min-height:180px; max-height:680px; overflow-y:auto; }
+
+  .placeholder-state {
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    height:180px; color:var(--muted); font-family:var(--mono); font-size:13px; gap:12px; text-align:center;
+  }
+
+  .thinking {
+    display:flex; align-items:center; gap:12px; color:var(--accent3);
+    font-family:var(--mono); font-size:13px; padding:20px 0;
+  }
+
+  .thinking-dots span {
+    display:inline-block; width:6px; height:6px; border-radius:50%;
+    background:var(--accent3); animation:dot-bounce 1.4s infinite ease-in-out;
+  }
+
+  .thinking-dots span:nth-child(2){animation-delay:.2s}
+  .thinking-dots span:nth-child(3){animation-delay:.4s}
+
+  @keyframes dot-bounce { 0%,80%,100%{transform:scale(.6);opacity:.5} 40%{transform:scale(1);opacity:1} }
+
+  /* ANALYSIS OUTPUT */
+  .analysis-output { font-size:14px; line-height:1.7; color:var(--text); }
+
+  .analysis-output h4 {
+    font-size:15px; font-weight:700; margin:22px 0 10px;
+    color:var(--accent); border-bottom:1px solid var(--border); padding-bottom:6px;
+  }
+
+  .analysis-output h4:first-child{margin-top:0}
+  .analysis-output h5{font-size:13px;font-weight:700;margin:14px 0 6px;color:var(--accent2)}
+  .analysis-output p{margin-bottom:10px}
+  .analysis-output ul{padding-left:20px;margin-bottom:12px}
+  .analysis-output li{margin-bottom:4px}
+
+  .analysis-output code {
+    background:var(--surface2); border:1px solid var(--border); border-radius:4px;
+    padding:1px 6px; font-family:var(--mono); font-size:12px; color:var(--accent2);
+  }
+
+  .analysis-output pre {
+    background:var(--surface2); border:1px solid var(--border); border-radius:8px;
+    padding:14px; font-family:var(--mono); font-size:12px; overflow-x:auto; margin:10px 0; line-height:1.6; color:var(--accent2);
+  }
+
+  .analysis-output table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13px;font-family:var(--mono)}
+  .analysis-output th{background:var(--surface2);padding:8px 12px;text-align:left;font-weight:700;color:var(--accent);border-bottom:1px solid var(--border);font-family:var(--sans);font-size:12px}
+  .analysis-output td{padding:7px 12px;border-bottom:1px solid rgba(255,255,255,0.04)}
+  .analysis-output tr:hover td{background:rgba(255,255,255,0.02)}
+
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin:14px 0}
+
+  .stat-box{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:14px}
+  .stat-box .label{font-size:10px;font-family:var(--mono);color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em}
+  .stat-box .value{font-size:22px;font-weight:800;color:var(--accent)}
+  .stat-box .sub{font-size:11px;color:var(--muted);font-family:var(--mono);margin-top:2px}
+
+  .alert{border-radius:8px;padding:10px 14px;margin:8px 0;font-size:13px;display:flex;gap:10px;align-items:flex-start;line-height:1.5}
+  .alert.warning{background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);color:#fcd34d}
+  .alert.success{background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.3);color:var(--accent)}
+  .alert.info{background:rgba(96,165,250,.1);border:1px solid rgba(96,165,250,.3);color:var(--accent2)}
+  .alert.danger{background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.3);color:var(--danger)}
+
+  .bar-row{display:flex;align-items:center;gap:10px;margin-bottom:6px;font-size:12px;font-family:var(--mono)}
+  .bar-label{min-width:150px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .bar-track{flex:1;height:8px;background:var(--surface2);border-radius:4px;overflow:hidden}
+  .bar-fill{height:100%;border-radius:4px;transition:width .6s ease}
+  .bar-value{min-width:80px;text-align:right;color:var(--text)}
+
+  .sparkline-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;font-size:12px;font-family:var(--mono)}
+  .spark-label{min-width:160px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .spark-val{min-width:80px;text-align:right;color:var(--text)}
+
+  .chip{display:inline-block;background:rgba(74,222,128,.12);color:var(--accent);border-radius:4px;padding:1px 6px;font-size:11px;font-family:var(--mono);margin:2px}
+  .chip.prop{background:rgba(96,165,250,.12);color:var(--accent2)}
+  .chip.warn{background:rgba(245,158,11,.12);color:var(--accent3)}
+
+  .export-btn{background:none;border:1px solid var(--border);border-radius:6px;padding:6px 12px;color:var(--muted);font-family:var(--mono);font-size:11px;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:6px;white-space:nowrap}
+  .export-btn:hover{border-color:var(--accent2);color:var(--accent2)}
+
+  .timeline{display:flex;margin:16px 0;border:1px solid var(--border);border-radius:8px;overflow:hidden}
+  .timeline-day{flex:1;padding:10px 8px;text-align:center;border-right:1px solid var(--border);font-size:11px}
+  .timeline-day:last-child{border-right:none}
+  .tl-date{color:var(--muted);margin-bottom:4px;font-family:var(--mono)}
+  .tl-total{color:var(--accent);font-weight:700;font-size:13px}
+  .tl-delta{font-size:10px;margin-top:2px;font-family:var(--mono)}
+
+  .hidden{display:none!important}
+
+  ::-webkit-scrollbar{width:6px;height:6px}
+  ::-webkit-scrollbar-track{background:var(--surface2)}
+  ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+  ::-webkit-scrollbar-thumb:hover{background:var(--muted)}
+
+  .disclaimer{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 16px;font-size:12px;color:var(--muted);font-family:var(--mono);margin-top:16px;display:flex;gap:10px}
+
+  /* GITHUB AUTO-LOAD */
+  .gh-load-section {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 18px 20px; margin-bottom: 20px;
+  }
+  .gh-load-section h3 {
+    font-size: 14px; font-weight: 700; display: flex; align-items: center;
+    gap: 8px; margin-bottom: 12px;
+  }
+  .gh-token-row {
+    display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 12px;
+  }
+  .gh-token-input {
+    flex: 1; min-width: 200px; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 6px; padding: 8px 12px; color: var(--text);
+    font-family: var(--mono); font-size: 12px;
+  }
+  .gh-token-input:focus { outline: none; border-color: var(--accent2); }
+  .gh-token-input::placeholder { color: var(--muted); }
+  .gh-fetch-btn {
+    background: var(--accent2); color: #000; border: none; border-radius: 7px;
+    padding: 8px 16px; font-family: var(--sans); font-size: 13px; font-weight: 700;
+    cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 6px;
+    white-space: nowrap;
+  }
+  .gh-fetch-btn:hover:not(:disabled) { filter: brightness(1.1); transform: translateY(-1px); }
+  .gh-fetch-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+  .gh-fetch-btn.secondary {
+    background: none; color: var(--accent2); border: 1px solid var(--accent2);
+  }
+  .gh-status {
+    font-size: 11px; font-family: var(--mono); color: var(--muted);
+    min-height: 18px; margin-top: 4px;
+  }
+  .gh-status.ok   { color: var(--accent); }
+  .gh-status.err  { color: var(--danger); }
+  .gh-status.warn { color: var(--accent3); }
+  .gh-divider {
+    display: flex; align-items: center; gap: 10px; margin: 14px 0;
+    color: var(--muted); font-size: 11px; font-family: var(--mono);
+  }
+  .gh-divider::before, .gh-divider::after {
+    content: ''; flex: 1; height: 1px; background: var(--border);
+  }
+
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header>
+    <div class="logo-area">
+      <h1>Linked Data <span>Analyse Agent</span></h1>
+      <p>CEO Ontologie · Dagelijkse &amp; wekelijkse monitoring</p>
+    </div>
+    <div class="status-badge">
+      <div class="status-dot"></div>
+      <span id="statusText">Agent klaar</span>
+    </div>
+  </header>
+
+  <div class="mode-tabs">
+    <button class="mode-tab active" id="tabDag" onclick="switchMode('dag')">📄 Dag analyse</button>
+    <button class="mode-tab" id="tabWeek" onclick="switchMode('week')">📅 Week overzicht</button>
+  </div>
+
+  <!-- DAG MODE -->
+  <div id="modeDag">
+    <div class="upload-section">
+
+      <!-- GitHub auto-load -->
+      <div class="gh-load-section">
+        <h3>🐙 Automatisch ophalen van GitHub</h3>
+        <div class="gh-token-row">
+          <input class="gh-token-input" type="password" id="ghTokenInput"
+            placeholder="GitHub Personal Access Token (classic · read:artifacts scope)"
+            oninput="saveToken(this.value)">
+          <button class="gh-fetch-btn" id="ghDagFetchBtn" onclick="fetchLatestDagArtifact()">
+            ⬇ Nieuwste dag ophalen
+          </button>
+        </div>
+        <div class="gh-status" id="ghDagStatus">Voer een token in en klik op ophalen.</div>
+        <div style="font-size:10px;color:var(--muted);font-family:var(--mono);margin-top:6px;line-height:1.8">
+          Repo: <code>cultureelerfgoed/cho-diff-monitor</code> &nbsp;·&nbsp;
+          GitHub artifacts zijn alleen via authenticatie te downloaden, ook voor publieke repos.
+          <br>
+          <span style="color:var(--accent3)">⚠ Token aanmaken:</span>
+          ga naar <a href="https://github.com/settings/tokens/new" target="_blank" style="color:var(--accent2)">github.com/settings/tokens/new ↗</a>,
+          kies <strong style="color:var(--text)">classic token</strong>, vink
+          <code style="background:rgba(74,222,128,0.12);color:var(--accent);padding:1px 5px;border-radius:3px">✓ repo</code>
+          aan en sla op. Plak het token hierboven — het is maar één keer zichtbaar.
+        </div>
+      </div>
+
+      <div class="gh-divider">of handmatig laden</div>
+
+      <div class="upload-zone" id="dagUploadZone" onclick="document.getElementById('dagFileInput').click()">
+        <div class="upload-icon">📂</div>
+        <h3>Laad dagelijkse diff CSV</h3>
+        <p>Sleep een bestand hierheen of klik om te bladeren<br>Formaat: item, aantalVandaag, aantalGisteren, verschil</p>
+        <input type="file" id="dagFileInput" accept=".csv">
+      </div>
+    </div>
+    <div class="agents-header">
+      <h2>🤖 Dag Agenten</h2>
+      <button class="run-all-btn" id="dagRunAllBtn" disabled onclick="runAllAgents('dag')">▶ Alle agenten</button>
+    </div>
+    <div class="agents-grid" id="dagAgentsGrid"></div>
+  </div>
+
+  <!-- WEEK MODE -->
+  <div id="modeWeek" class="hidden">
+    <div class="upload-section">
+
+      <!-- GitHub auto-load week -->
+      <div class="gh-load-section">
+        <h3>🐙 Automatisch ophalen van GitHub</h3>
+        <div class="gh-token-row">
+          <input class="gh-token-input" type="password" id="ghTokenInputWeek"
+            placeholder="GitHub Personal Access Token (wordt gedeeld met dag-tab)"
+            oninput="saveToken(this.value)">
+          <button class="gh-fetch-btn" id="ghWeekFetchBtn" onclick="fetchWeekArtifacts()">
+            ⬇ Laatste 7 dagen ophalen
+          </button>
+          <button class="gh-fetch-btn secondary" onclick="fetchWeekArtifacts(14)">
+            14 dagen
+          </button>
+        </div>
+        <div class="gh-status" id="ghWeekStatus">Voer een token in en klik op ophalen.</div>
+        <div style="font-size:10px;color:var(--muted);font-family:var(--mono);margin-top:6px;line-height:1.8">
+          Haalt de meest recente artifacts op uit <code>cultureelerfgoed/cho-diff-monitor</code>.
+          Reeds geladen bestanden worden overgeslagen.
+          <br>
+          <span style="color:var(--accent3)">⚠ Token aanmaken:</span>
+          ga naar <a href="https://github.com/settings/tokens/new" target="_blank" style="color:var(--accent2)">github.com/settings/tokens/new ↗</a>,
+          kies <strong style="color:var(--text)">classic token</strong>, vink
+          <code style="background:rgba(74,222,128,0.12);color:var(--accent);padding:1px 5px;border-radius:3px">✓ repo</code>
+          aan en sla op.
+        </div>
+      </div>
+
+      <div class="gh-divider">of handmatig laden</div>
+
+      <div class="upload-zone" id="weekUploadZone" onclick="document.getElementById('weekFileInput').click()">
+        <div class="upload-icon">📂</div>
+        <h3>Laad meerdere dag-CSV bestanden</h3>
+        <p>Selecteer of sleep meerdere bestanden tegelijk (bijv. 5–7 voor een week)<br>
+        Datums worden automatisch uit bestandsnamen gelezen<br>
+        Voorbeeld: <code>diff-cho-2026-03-30_2026-03-29.csv</code></p>
+        <input type="file" id="weekFileInput" accept=".csv" multiple>
+      </div>
+
+      <div id="weekFileListSection" class="hidden">
+        <div class="week-files-header">
+          <h3 id="weekFileCount">0 bestanden geladen</h3>
+          <div style="display:flex;gap:8px">
+            <button class="clear-btn" onclick="document.getElementById('weekFileInput').click()">+ Meer toevoegen</button>
+            <button class="clear-btn" onclick="clearWeekFiles()">✕ Alles wissen</button>
+          </div>
+        </div>
+        <div class="file-list" id="weekFileList"></div>
+        <div class="alert info" style="font-size:12px">ℹ️ Datum wordt automatisch uit de bestandsnaam gelezen. Gebruik het datumveld om te corrigeren indien nodig.</div>
+      </div>
+    </div>
+
+    <div class="agents-header">
+      <h2>📅 Week Agenten</h2>
+      <button class="run-all-btn" id="weekRunAllBtn" disabled onclick="runAllAgents('week')">▶ Alle agenten</button>
+    </div>
+    <div class="agents-grid" id="weekAgentsGrid"></div>
+  </div>
+
+  <!-- RESULTS (shared) -->
+  <div class="results-panel">
+    <div class="results-panel-header">
+      <h3 id="resultsTitle">📋 Analyseresultaten</h3>
+      <button class="export-btn" onclick="exportResults()">⬇ Exporteer rapport</button>
+    </div>
+    <div class="results-panel-body" id="resultsBody">
+      <div class="placeholder-state">
+        <div style="font-size:32px">🔍</div>
+        <div>Selecteer een agent en laad een of meerdere CSV-bestanden om te starten</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="disclaimer">
+    <div>ℹ️</div>
+    <div>CSV-bestanden worden lokaal in de browser verwerkt. Bij AI-agenten wordt data naar de Anthropic API gestuurd. Sla geen persoonsgegevens op in de diff-bestanden.</div>
+  </div>
+
+</div>
+
+<script>
+
+// ══ GITHUB AUTO-LOAD ══════════════════════════════════
+const GH_REPO  = 'cultureelerfgoed/cho-diff-monitor';
+const GH_API   = 'https://api.github.com';
+
+// Token opslaan/lezen via sessionStorage (per sessie, niet persistent)
+function saveToken(val) {
+  if (val) sessionStorage.setItem('gh_token', val.trim());
+  // sync beide input-velden
+  const t = val.trim();
+  const a = document.getElementById('ghTokenInput');
+  const b = document.getElementById('ghTokenInputWeek');
+  if (a && a !== document.activeElement) a.value = t;
+  if (b && b !== document.activeElement) b.value = t;
+}
+
+function getToken() {
+  return (document.getElementById('ghTokenInput')?.value ||
+          document.getElementById('ghTokenInputWeek')?.value ||
+          sessionStorage.getItem('gh_token') || '').trim();
+}
+
+// Herstel token in beide velden bij laden pagina
+window.addEventListener('DOMContentLoaded', () => {
+  const saved = sessionStorage.getItem('gh_token');
+  if (saved) {
+    const a = document.getElementById('ghTokenInput');
+    const b = document.getElementById('ghTokenInputWeek');
+    if (a) a.value = saved;
+    if (b) b.value = saved;
+  }
+});
+
+function ghStatus(elId, msg, type = '') {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  el.textContent = msg;
+  el.className = 'gh-status' + (type ? ' ' + type : '');
+}
+
+function ghSetBusy(btnId, busy, label = '') {
+  const btn = document.getElementById(btnId);
+  if (!btn) return;
+  btn.disabled = busy;
+  if (label) btn.textContent = busy ? '⏳ ' + label : btn.dataset.origLabel || label;
+  if (!busy && !label) btn.textContent = btn.dataset.origLabel || btn.textContent;
+  if (busy && !btn.dataset.origLabel) btn.dataset.origLabel = btn.textContent;
+}
+
+// Haal lijst van artifacts op via GitHub REST API
+async function ghFetchArtifacts(perPage = 50) {
+  const token = getToken();
+  if (!token) throw new Error('Geen token opgegeven.');
+  const headers = {
+    'Authorization': `Bearer ${token}`,
+    'Accept': 'application/vnd.github+json',
+    'X-GitHub-Api-Version': '2022-11-28'
+  };
+  const url = `${GH_API}/repos/${GH_REPO}/actions/artifacts?per_page=${perPage}`;
+  const res = await fetch(url, { headers });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(`GitHub API fout ${res.status}: ${body.message || res.statusText}`);
+  }
+  const data = await res.json();
+  return data.artifacts || [];
+}
+
+// Download een artifact (zip), pak de eerste CSV eruit
+async function ghDownloadArtifactCsv(artifact) {
+  const token = getToken();
+  const headers = {
+    'Authorization': `Bearer ${token}`,
+    'Accept': 'application/vnd.github+json',
+    'X-GitHub-Api-Version': '2022-11-28'
+  };
+  // Stap 1: download zip via archive_download_url
+  const res = await fetch(artifact.archive_download_url, { headers });
+  if (!res.ok) throw new Error(`Download mislukt (${res.status}): ${artifact.name}`);
+  const blob = await res.blob();
+
+  // Stap 2: pak de zip uit (ingebouwde ZIP-parser)
+  const csvText = await extractCsvFromZip(blob);
+  return { name: artifact.name, csvText };
+}
+
+// ZIP-parser — leest de Central Directory voor betrouwbare offsets en groottes.
+// Hiermee werken ook GitHub-artifacts waarbij local headers geen compSize bevatten
+// (data descriptor, general purpose bit 3 gezet).
+async function extractCsvFromZip(blob) {
+  const buf   = await blob.arrayBuffer();
+  const bytes = new Uint8Array(buf);
+  const view  = new DataView(buf);
+
+  const ru16 = o => view.getUint16(o, true);
+  const ru32 = o => view.getUint32(o, true);
+
+  // ── Zoek End-of-Central-Directory record (van achter naar voren) ──────────
+  let eocdOffset = -1;
+  for (let i = bytes.length - 22; i >= 0; i--) {
+    if (ru32(i) === 0x06054b50) { eocdOffset = i; break; }
+  }
+  if (eocdOffset === -1) throw new Error('Geen geldig ZIP-bestand (EOCD niet gevonden).');
+
+  const cdOffset = ru32(eocdOffset + 16);  // offset van central directory
+  const cdSize   = ru32(eocdOffset + 12);  // grootte central directory
+  const cdCount  = ru16(eocdOffset + 8);   // aantal entries
+
+  // ── Loop door Central Directory ──────────────────────────────────────────
+  const entries = [];
+  let cdPos = cdOffset;
+  for (let i = 0; i < cdCount; i++) {
+    if (ru32(cdPos) !== 0x02014b50) break; // central dir signature
+    const method      = ru16(cdPos + 10);
+    const compSize    = ru32(cdPos + 20);
+    const uncompSize  = ru32(cdPos + 24);
+    const fnLen       = ru16(cdPos + 28);
+    const extraLen    = ru16(cdPos + 30);
+    const commentLen  = ru16(cdPos + 32);
+    const localOffset = ru32(cdPos + 42);  // offset van local file header
+    const name        = new TextDecoder().decode(bytes.slice(cdPos + 46, cdPos + 46 + fnLen));
+
+    entries.push({ name, method, compSize, uncompSize, localOffset });
+    cdPos += 46 + fnLen + extraLen + commentLen;
+  }
+
+  if (!entries.length) throw new Error('ZIP bevat geen entries (lege central directory).');
+
+  // ── Zoek eerste CSV entry ─────────────────────────────────────────────────
+  const csvEntry = entries.find(e =>
+    e.name.toLowerCase().endsWith('.csv') && !e.name.startsWith('__MACOSX')
+  );
+  if (!csvEntry) {
+    throw new Error('Geen CSV in artifact zip. Aanwezig: ' + entries.map(e => e.name).join(', '));
+  }
+
+  // ── Lees compressed data via local header (skip variable-length velden) ──
+  const lhBase    = csvEntry.localOffset;
+  if (ru32(lhBase) !== 0x04034b50) throw new Error('Local file header ongeldig.');
+  const lhFnLen   = ru16(lhBase + 26);
+  const lhExLen   = ru16(lhBase + 28);
+  const dataStart = lhBase + 30 + lhFnLen + lhExLen;
+  const compData  = bytes.slice(dataStart, dataStart + csvEntry.compSize);
+
+  // ── Decompress ────────────────────────────────────────────────────────────
+  let decoded;
+  if (csvEntry.method === 0) {
+    // Stored — geen compressie
+    decoded = compData;
+  } else if (csvEntry.method === 8) {
+    // Deflate
+    if (typeof DecompressionStream === 'undefined') {
+      throw new Error('DecompressionStream niet beschikbaar. Gebruik Chrome 80+, Firefox 113+ of Edge 80+.');
+    }
+    const ds     = new DecompressionStream('deflate-raw');
+    const writer = ds.writable.getWriter();
+    const reader = ds.readable.getReader();
+    writer.write(compData);
+    writer.close();
+    const chunks = [];
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+    }
+    const total = chunks.reduce((s, c) => s + c.length, 0);
+    decoded = new Uint8Array(total);
+    let pos = 0;
+    for (const c of chunks) { decoded.set(c, pos); pos += c.length; }
+  } else {
+    throw new Error(`Niet-ondersteunde ZIP-methode: ${csvEntry.method}.`);
+  }
+
+  return new TextDecoder('utf-8').decode(decoded);
+}
+
+// ── Dag: haal nieuwste artifact op ──────────────────────────────────────────
+async function fetchLatestDagArtifact() {
+  const statusId = 'ghDagStatus';
+  const btnId    = 'ghDagFetchBtn';
+  try {
+    ghSetBusy(btnId, true, 'Ophalen…');
+    ghStatus(statusId, '🔄 Artifacts ophalen van GitHub…');
+
+    const artifacts = await ghFetchArtifacts(30);
+    // Filter op niet-verlopen artifacts, sorteer op datum (nieuwste eerst)
+    const valid = artifacts
+      .filter(a => !a.expired)
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+    if (!valid.length) throw new Error('Geen geldige artifacts gevonden in deze repo.');
+
+    const latest = valid[0];
+    ghStatus(statusId, `🔄 Downloaden: ${latest.name} (${new Date(latest.created_at).toLocaleDateString('nl-NL')})…`);
+
+    const { name, csvText } = await ghDownloadArtifactCsv(latest);
+    ghStatus(statusId, `✓ Geladen: ${name}`, 'ok');
+
+    // Verwerk als dag-bestand
+    const file = new File([csvText], name + '.csv', { type: 'text/csv' });
+    await loadDagFile(file);
+
+  } catch (e) {
+    ghStatus(statusId, '✕ ' + e.message, 'err');
+    console.error(e);
+  } finally {
+    ghSetBusy(btnId, false);
+  }
+}
+
+// ── Week: haal meerdere artifacts op ────────────────────────────────────────
+async function fetchWeekArtifacts(days = 7) {
+  const statusId = 'ghWeekStatus';
+  const btnId    = 'ghWeekFetchBtn';
+  try {
+    ghSetBusy(btnId, true, 'Ophalen…');
+    ghStatus(statusId, `🔄 Artifacts ophalen van GitHub (laatste ${days} dagen)…`);
+
+    const artifacts = await ghFetchArtifacts(100);
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - days);
+
+    const valid = artifacts
+      .filter(a => !a.expired && new Date(a.created_at) >= cutoff)
+      .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+
+    if (!valid.length) {
+      ghStatus(statusId, `⚠ Geen artifacts gevonden in de laatste ${days} dagen.`, 'warn');
+      return;
+    }
+
+    // Filter al geladen bestanden
+    const alreadyLoaded = new Set(weekFiles.map(wf => wf.filename));
+    const toLoad = valid.filter(a => !alreadyLoaded.has(a.name + '.csv') && !alreadyLoaded.has(a.name));
+
+    if (!toLoad.length) {
+      ghStatus(statusId, `✓ Alle ${valid.length} artifacts zijn al geladen.`, 'ok');
+      return;
+    }
+
+    let loaded = 0;
+    const errors = [];
+    for (const artifact of toLoad) {
+      try {
+        ghStatus(statusId, `🔄 ${loaded + 1}/${toLoad.length}: ${artifact.name}…`);
+        const { name, csvText } = await ghDownloadArtifactCsv(artifact);
+        const date = extractDate(name);
+        const data = enrich(parseCSV(csvText));
+        weekFiles.push({ filename: name + '.csv', date, data, rawCsv: csvText });
+        loaded++;
+      } catch (e) {
+        errors.push(artifact.name + ': ' + e.message);
+      }
+    }
+
+    weekFiles.sort((a, b) => (a.date || 'zzz').localeCompare(b.date || 'zzz'));
+    renderWeekFileList();
+    document.getElementById('weekRunAllBtn').disabled = weekFiles.length < 2;
+    Object.keys(agentResults).filter(k => k.startsWith('week_')).forEach(k => delete agentResults[k]);
+    renderAgents();
+
+    if (errors.length) {
+      ghStatus(statusId, `⚠ ${loaded} geladen, ${errors.length} mislukt: ${errors[0]}`, 'warn');
+    } else {
+      ghStatus(statusId, `✓ ${loaded} artifact(s) geladen. Totaal in buffer: ${weekFiles.length} dagen.`, 'ok');
+    }
+
+  } catch (e) {
+    ghStatus(statusId, '✕ ' + e.message, 'err');
+    console.error(e);
+  } finally {
+    ghSetBusy(btnId, false);
+  }
+}
+
+// ══ STATE ══════════════════════════════════════════════
+let dagData = [];
+let weekFiles = [];     // [{filename, date, data, rawCsv}]
+let currentMode = 'dag';
+let currentAgent = null;
+let agentResults = {};  // key: "dag_overview" / "week_trend" etc.
+
+// ══ AGENTS ═════════════════════════════════════════════
+const DAG_AGENTS = [
+  { id:'overview',  icon:'📊', name:'Dagelijks Overzicht',       color:'#4ade80', local:true,  scope:'dag',
+    desc:'Totaal triples, klassen vs properties, top-10 distributie.',       fn: runOverviewAgent },
+  { id:'growth',    icon:'📈', name:'Groei & Verandering',        color:'#60a5fa', local:true,  scope:'dag',
+    desc:'Nieuwe, verdwenen en gegroeide items; delta-overzicht.',            fn: runGrowthAgent },
+  { id:'namespace', icon:'🏷️', name:'Namespace Verdeling',        color:'#a78bfa', local:true,  scope:'dag',
+    desc:'Breakdown per vocabulaire: CEO, SKOS, RDF, GeoSPARQL.',            fn: runNamespaceAgent },
+  { id:'health',    icon:'🩺', name:'Data Kwaliteit Monitor',     color:'#f87171', local:true,  scope:'dag',
+    desc:'Anomalieën, outliers, singletons en rdf:type consistentie.',       fn: runHealthAgent },
+  { id:'rijksmon',  icon:'🏛️', name:'Rijksmonument Monitor',      color:'#f59e0b', local:true,  scope:'dag',
+    desc:'Aantallen rijksmonumentnummers, dekking, delta t.o.v. gisteren en kwaliteitssignalen.', fn: runRijksmonumentDagAgent },
+];
+
+const WEEK_AGENTS = [
+  { id:'weekoverview',  icon:'📅', name:'Week Totaaloverzicht',       color:'#4ade80', local:true,  scope:'week',
+    desc:'Triples per dag, totale groei over de week, piekdagen en tijdlijn.', fn: runWeekOverviewAgent },
+  { id:'weektrend',     icon:'📈', name:'Trends per Klasse/Property', color:'#60a5fa', local:true,  scope:'week',
+    desc:'Welke klassen en properties groeien of krimpen over de week? Sparklines per item.', fn: runWeekTrendAgent },
+  { id:'weekanomalies', icon:'🚨', name:'Anomalie Detectie',          color:'#f87171', local:true,  scope:'week',
+    desc:'Datumgaten, volumepieken, tijdelijk verdwenen items, hoge variatie.', fn: runWeekAnomalyAgent },
+
+  { id:'weekrijksmon',  icon:'🏛️', name:'Rijksmonument Trend Monitor', color:'#a78bfa', local:true,  scope:'week',
+    desc:'Weektrend rijksmonumentnummers: aantallen per dag, groeisnelheid, dekking en afwijkingen.', fn: runRijksmonumentWeekAgent },
+];
+
+// ══ MODE SWITCH ════════════════════════════════════════
+function switchMode(mode) {
+  currentMode = mode;
+  document.getElementById('modeDag').classList.toggle('hidden', mode !== 'dag');
+  document.getElementById('modeWeek').classList.toggle('hidden', mode !== 'week');
+  document.getElementById('tabDag').classList.toggle('active', mode === 'dag');
+  document.getElementById('tabWeek').classList.toggle('active', mode === 'week');
+  currentAgent = null;
+  renderAgents();
+  showPlaceholder('Selecteer een agent om te starten.');
+}
+
+// ══ RENDER AGENTS ══════════════════════════════════════
+function renderAgents() {
+  renderGrid('dagAgentsGrid',  DAG_AGENTS,  dagData.length === 0);
+  renderGrid('weekAgentsGrid', WEEK_AGENTS, weekFiles.length < 2);
+}
+
+function renderGrid(gridId, agents, disabled) {
+  document.getElementById(gridId).innerHTML = agents.map(a => {
+    const key = `${a.scope}_${a.id}`;
+    const res = agentResults[key];
+    const sc = !res ? '' : res.loading ? 'running' : res.error ? 'error' : 'done';
+    const st = !res ? '○ Wachtend' : res.loading ? '◌ Bezig…' : res.error ? '✕ Fout' : '✓ Klaar';
+    return `<div class="agent-card ${currentAgent===key?'active':''} ${disabled?'disabled':''}"
+         style="--card-color:${a.color}" id="card-${key}" onclick="selectAgent('${key}')">
+      <div class="agent-card-header">
+        <div class="agent-icon">${a.icon}</div>
+        <div>
+          <div class="agent-badges">
+            ${a.local?'<span class="badge local">lokaal</span>':'<span class="badge ai">AI</span>'}
+            <span class="badge ${a.scope}">${a.scope}</span>
+          </div>
+          <h3>${a.name}</h3>
+        </div>
+      </div>
+      <p>${a.desc}</p>
+      <div class="agent-status ${sc}" id="status-${key}">${st}</div>
+    </div>`;
+  }).join('');
+}
+
+// ══ AGENT RUN ══════════════════════════════════════════
+async function selectAgent(key) {
+  currentAgent = key;
+  renderAgents();
+  const agent = [...DAG_AGENTS,...WEEK_AGENTS].find(a=>`${a.scope}_${a.id}`===key);
+  if (!agent) return;
+  document.getElementById('resultsTitle').textContent = `${agent.icon} ${agent.name}`;
+  if (agent.scope==='dag' && dagData.length===0) return showPlaceholder('Laad eerst een CSV in het tab "Dag analyse".');
+  if (agent.scope==='week' && weekFiles.length<2) return showPlaceholder('Laad minstens 2 CSV-bestanden voor weekanalyse.');
+  if (agentResults[key] && !agentResults[key].loading) return renderResult(agentResults[key]);
+  await runAgent(agent, key);
+}
+
+async function runAgent(agent, key) {
+  agentResults[key] = { loading: true };
+  updateCardStatus(key);
+  showLoading(agent.name);
+  try {
+    const input = agent.scope==='dag' ? dagData : weekFiles;
+    const html = await agent.fn(input);
+    agentResults[key] = { html };
+  } catch(e) {
+    agentResults[key] = { error: e.message||String(e) };
+  }
+  updateCardStatus(key);
+  renderResult(agentResults[key]);
+}
+
+async function runAllAgents(scope) {
+  const agents = scope==='dag' ? DAG_AGENTS : WEEK_AGENTS;
+  for (const a of agents) {
+    const key = `${a.scope}_${a.id}`;
+    currentAgent = key;
+    renderAgents();
+    document.getElementById('resultsTitle').textContent = `${a.icon} ${a.name}`;
+    await runAgent(a, key);
+  }
+}
+
+function updateCardStatus(key) {
+  const el = document.getElementById(`status-${key}`);
+  if (!el) return;
+  const res = agentResults[key];
+  const sc = !res?'':res.loading?'running':res.error?'error':'done';
+  const st = !res?'○ Wachtend':res.loading?'◌ Bezig…':res.error?'✕ Fout':'✓ Klaar';
+  el.className = `agent-status ${sc}`;
+  el.textContent = st;
+}
+
+// ══ UI ═════════════════════════════════════════════════
+function showPlaceholder(msg) {
+  document.getElementById('resultsBody').innerHTML =
+    `<div class="placeholder-state"><div style="font-size:32px">⚠️</div><div>${msg}</div></div>`;
+}
+
+function showLoading(name) {
+  document.getElementById('resultsBody').innerHTML =
+    `<div class="thinking"><div class="thinking-dots"><span></span><span></span><span></span></div>Agent "${name}" analyseert…</div>`;
+}
+
+function renderResult(r) {
+  document.getElementById('resultsBody').innerHTML = r.error
+    ? `<div class="alert danger">⚠️ ${r.error}</div>`
+    : `<div class="analysis-output">${r.html}</div>`;
+}
+
+const fN = n => { const a=Math.abs(n); const f=a>=1e6?(a/1e6).toFixed(2)+'M':a>=1e3?(a/1e3).toFixed(1)+'K':a; return (n<0?'-':'')+f; };
+
+// ══ CSV PARSING ════════════════════════════════════════
+function parseCSV(text) {
+  const lines = text.trim().split('\n');
+  const headers = lines[0].split(',').map(h=>h.trim().replace(/"/g,''));
+  return lines.slice(1).map(line => {
+    const parts=[]; let cur='',inQ=false;
+    for (let i=0;i<line.length;i++) {
+      if (line[i]==='"'){inQ=!inQ;continue}
+      if (line[i]===','&&!inQ){parts.push(cur);cur='';continue}
+      cur+=line[i];
+    }
+    parts.push(cur);
+    const row={};
+    headers.forEach((h,i)=>row[h]=(parts[i]||'').trim());
+    return row;
+  }).filter(r=>r.item);
+}
+
+function enrich(rows) {
+  return rows.map(r => {
+    const uri = r.item.replace(/[<>]/g,'');
+    const localname = uri.split(/[#/]/).pop();
+    const namespace = uri.replace(/[#/][^#/]*$/,'');
+    return { ...r, uri, localname, namespace,
+      isClass: /^[A-Z]/.test(localname),
+      aantalVandaag:  parseFloat(r.aantalVandaag)||0,
+      aantalGisteren: parseFloat(r.aantalGisteren)||0,
+      verschil:       parseFloat(r.verschil)||0 };
+  });
+}
+
+function extractDate(filename) {
+  const m = filename.match(/(\d{4}-\d{2}-\d{2})/);
+  return m ? m[1] : null;
+}
+
+// ══ FILE LOADING ═══════════════════════════════════════
+
+// Debounce: prevents rapid-fire processing when multiple files are dropped quickly
+function debounce(fn, ms) {
+  let timer;
+  return function(...args) { clearTimeout(timer); timer = setTimeout(() => fn.apply(this, args), ms); };
+}
+
+// Promise-based file reader — allows await inside async upload handlers
+function readTextAsync(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload  = e => resolve(e.target.result);
+    r.onerror = ()  => reject(new Error('Leesfout: ' + file.name));
+    r.readAsText(file, 'UTF-8');
+  });
+}
+
+// Legacy callback wrapper (kept for compatibility)
+function readText(file, cb) {
+  readTextAsync(file).then(cb).catch(err => console.error(err));
+}
+
+// Shows a transient loading indicator inside a drop zone
+function setZoneLoading(zone, msg) {
+  zone.dataset.loading = '1';
+  zone.innerHTML = `<div style="display:flex;align-items:center;gap:10px;justify-content:center;padding:8px">
+    <div class="thinking-dots"><span></span><span></span><span></span></div>
+    <span style="font-family:var(--mono);font-size:13px;color:var(--muted)">${msg}</span>
+  </div>`;
+}
+
+// DAG — file input listener (herbruikbaar, want de input wordt vervangen na laden)
+function attachDagInputListener() {
+  const inp = document.getElementById('dagFileInput');
+  if (!inp || inp.dataset.listenerAttached) return;
+  inp.dataset.listenerAttached = '1';
+  inp.addEventListener('change', e => {
+    const f = e.target.files[0];
+    e.target.value = '';
+    if (f) loadDagFile(f);
+  });
+}
+attachDagInputListener();
+
+const dagZone = document.getElementById('dagUploadZone');
+// Teller voorkomt false dragleave bij bewegen over child-elementen
+let dagDragCounter = 0;
+dagZone.addEventListener('dragenter', e => { e.preventDefault(); dagDragCounter++; dagZone.classList.add('dragover'); });
+dagZone.addEventListener('dragover',  e => { e.preventDefault(); });
+dagZone.addEventListener('dragleave', () => { dagDragCounter--; if (dagDragCounter <= 0) { dagDragCounter = 0; dagZone.classList.remove('dragover'); } });
+
+const _debouncedLoadDag = debounce(f => loadDagFile(f), 150);
+dagZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dagDragCounter = 0;
+  dagZone.classList.remove('dragover');
+  const f = e.dataTransfer.files[0];
+  if (f && f.name.endsWith('.csv')) _debouncedLoadDag(f);
+  else if (f) showPlaceholder('Alleen .csv bestanden worden ondersteund.');
+});
+
+async function loadDagFile(file) {
+  setZoneLoading(dagZone, file.name + ' laden\u2026');
+  let text;
+  try {
+    text = await readTextAsync(file);
+    await new Promise(r => setTimeout(r, 0)); // yield so the loader actually renders
+    dagData = enrich(parseCSV(text));
+  } catch(e) {
+    showPlaceholder('Fout bij laden: ' + e.message);
+    return;
+  }
+  dagZone.innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;justify-content:center">
+      <span style="font-size:20px">\u2705</span>
+      <div style="text-align:left">
+        <div style="font-weight:700;font-size:14px">${file.name}</div>
+        <div style="color:var(--muted);font-family:var(--mono);font-size:12px;margin-top:2px">${dagData.length} items geladen \u00b7 klik om te wijzigen</div>
+      </div>
+    </div>
+    <input type="file" id="dagFileInput" accept=".csv">`;
+  dagZone.style.padding = '16px 36px';
+  dagZone.onclick = () => document.getElementById('dagFileInput').click();
+  attachDagInputListener();
+  agentResults = {};
+  document.getElementById('dagRunAllBtn').disabled = false;
+  renderAgents();
+  selectAgent('dag_overview');
+}
+
+// WEEK — event listeners
+
+// The upload zone is NEVER wiped during loading; progress is shown in a
+// separate overlay div so the <input> element stays intact in the DOM.
+function attachWeekInputListener() {
+  const inp = document.getElementById('weekFileInput');
+  if (!inp || inp.dataset.listenerAttached) return;
+  inp.dataset.listenerAttached = '1';
+  inp.addEventListener('change', e => {
+    const files = Array.from(e.target.files);
+    e.target.value = '';                     // reset so same files can be re-selected
+    if (files.length) _debouncedAddWeek(files);
+  });
+}
+
+attachWeekInputListener();   // attach once on page load
+
+const weekZone = document.getElementById('weekUploadZone');
+let weekDragCounter = 0;
+weekZone.addEventListener('dragenter', e => { e.preventDefault(); weekDragCounter++; weekZone.classList.add('dragover'); });
+weekZone.addEventListener('dragover',  e => { e.preventDefault(); });
+weekZone.addEventListener('dragleave', () => { weekDragCounter--; if (weekDragCounter <= 0) { weekDragCounter = 0; weekZone.classList.remove('dragover'); } });
+
+const _debouncedAddWeek = debounce(files => addWeekFiles(files), 200);
+weekZone.addEventListener('drop', e => {
+  e.preventDefault();
+  weekDragCounter = 0;
+  weekZone.classList.remove('dragover');
+  const files = Array.from(e.dataTransfer.files).filter(f => f.name.endsWith('.csv'));
+  if (files.length) _debouncedAddWeek(files);
+  else showPlaceholder('Alleen .csv bestanden worden ondersteund.');
+});
+
+// Overlay progress bar shown INSIDE the zone without touching the <input>
+function showWeekProgress(current, total) {
+  let ov = document.getElementById('week-upload-overlay');
+  if (!ov) {
+    ov = document.createElement('div');
+    ov.id = 'week-upload-overlay';
+    ov.style.cssText = 'position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;background:rgba(10,12,16,.85);border-radius:10px;z-index:10;pointer-events:none';
+    weekZone.style.position = 'relative';
+    weekZone.appendChild(ov);
+  }
+  if (current >= total) {
+    ov.remove();
+    weekZone.style.position = '';
+    return;
+  }
+  const pct = total > 0 ? Math.round(current / total * 100) : 0;
+  ov.innerHTML = `
+    <div style="font-family:var(--mono);font-size:13px;color:var(--accent)">
+      ${current} / ${total} bestanden geladen…
+    </div>
+    <div style="width:180px;height:6px;background:var(--border);border-radius:3px;overflow:hidden">
+      <div style="width:${pct}%;height:100%;background:var(--accent);border-radius:3px;transition:width .15s"></div>
+    </div>`;
+}
+
+async function addWeekFiles(files) {
+  const pending = files.filter(f => !weekFiles.some(wf => wf.filename === f.name));
+  if (!pending.length) return;
+
+  showWeekProgress(0, pending.length);
+
+  let loaded = 0;
+  for (const file of pending) {
+    try {
+      const text = await readTextAsync(file);
+      await new Promise(r => setTimeout(r, 0));   // yield to keep UI responsive
+      weekFiles.push({
+        filename: file.name,
+        date:     extractDate(file.name),
+        data:     enrich(parseCSV(text)),
+        rawCsv:   text
+      });
+    } catch(e) {
+      console.warn('Overgeslagen:', file.name, '—', e.message);
+    }
+    loaded++;
+    showWeekProgress(loaded, pending.length);
+  }
+
+  // Done — update file list and agents
+  weekFiles.sort((a, b) => (a.date || 'zzz').localeCompare(b.date || 'zzz'));
+  renderWeekFileList();
+  document.getElementById('weekRunAllBtn').disabled = weekFiles.length < 2;
+  Object.keys(agentResults).filter(k => k.startsWith('week_')).forEach(k => delete agentResults[k]);
+  renderAgents();
+}
+
+function clearWeekFiles() {
+  weekFiles = [];
+  Object.keys(agentResults).filter(k => k.startsWith('week_')).forEach(k => delete agentResults[k]);
+  document.getElementById('weekRunAllBtn').disabled = true;
+  document.getElementById('weekFileListSection').classList.add('hidden');
+  renderAgents();
+  showPlaceholder('Bestanden gewist. Laad nieuwe bestanden.');
+}
+
+function renderWeekFileList() {
+  const section = document.getElementById('weekFileListSection');
+  section.classList.remove('hidden');
+  document.getElementById('weekFileCount').textContent =
+    `${weekFiles.length} bestand${weekFiles.length !== 1 ? 'en' : ''} geladen`;
+  document.getElementById('weekFileList').innerHTML = weekFiles.map((wf, idx) => {
+    const total = wf.data.reduce((s, r) => s + r.aantalVandaag, 0);
+    return `<div class="file-pill ${wf.date ? 'valid' : 'nodate'}">
+      <div class="file-pill-icon">📄</div>
+      <div class="file-pill-info">
+        <div class="file-pill-name" title="${wf.filename}">${wf.filename}</div>
+        <div class="file-pill-meta">${wf.data.length} items · ${fN(total)} triples</div>
+      </div>
+      <input class="date-input" type="date" value="${wf.date || ''}"
+             onchange="updateDate(${idx}, this.value)" title="Datum aanpassen">
+      <button class="file-remove" onclick="removeFile(${idx})" title="Verwijder">✕</button>
+    </div>`;
+  }).join('');
+}
+
+function updateDate(idx, val) {
+  weekFiles[idx].date = val || null;
+  weekFiles.sort((a, b) => (a.date || 'zzz').localeCompare(b.date || 'zzz'));
+  renderWeekFileList();
+  Object.keys(agentResults).filter(k => k.startsWith('week_')).forEach(k => delete agentResults[k]);
+  renderAgents();
+}
+
+function removeFile(idx) {
+  weekFiles.splice(idx, 1);
+  document.getElementById('weekRunAllBtn').disabled = weekFiles.length < 2;
+  if (weekFiles.length === 0) {
+    document.getElementById('weekFileListSection').classList.add('hidden');
+  } else {
+    renderWeekFileList();
+  }
+  Object.keys(agentResults).filter(k => k.startsWith('week_')).forEach(k => delete agentResults[k]);
+  renderAgents();
+}
+
+// ══ DAG AGENTS ═════════════════════════════════════════
+function runOverviewAgent(data) {
+  const allZero  = data.every(r => r.aantalGisteren === 0);
+  const classes  = data.filter(r => r.isClass);
+  const props    = data.filter(r => !r.isClass);
+  const total    = data.reduce((s, r) => s + r.aantalVandaag, 0);
+  const totalG   = data.reduce((s, r) => s + r.aantalGisteren, 0);
+  const totalD   = total - totalG;
+  const ns       = [...new Set(data.map(r => r.namespace))];
+  const top10    = [...data].sort((a, b) => b.aantalVandaag - a.aantalVandaag).slice(0, 10);
+  const mx       = top10[0]?.aantalVandaag || 1;
+  const nieuwItems = data.filter(r => r.aantalGisteren === 0 && r.aantalVandaag > 0).length;
+  const verdItems  = data.filter(r => r.aantalVandaag === 0 && r.aantalGisteren > 0).length;
+
+  const bars = top10.map(r => {
+    const d = r.verschil;
+    const dCol = d > 0 ? 'var(--accent)' : d < 0 ? 'var(--danger)' : 'var(--muted)';
+    const dStr = allZero ? '' : `<span style="color:${dCol};font-size:10px;margin-left:6px">${d >= 0 ? '+' : ''}${fN(d)}</span>`;
+    return `<div class="bar-row">
+      <div class="bar-label" title="${r.uri}">${r.localname}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${(r.aantalVandaag/mx*100).toFixed(1)}%;background:${r.isClass?'var(--accent)':'var(--accent2)'}"></div></div>
+      <div class="bar-value">${fN(r.aantalVandaag)}${dStr}</div>
+    </div>`;
+  }).join('');
+
+  const deltaStr = allZero ? 'initiële lading' : (totalD >= 0 ? '+' : '') + fN(totalD) + ' t.o.v. gisteren';
+  const deltaCol = allZero ? 'var(--muted)' : totalD > 0 ? 'var(--accent)' : totalD < 0 ? 'var(--danger)' : 'var(--muted)';
+
+  return `<h4>📊 Algemeen Overzicht</h4>
+    <div class="stat-grid">
+      <div class="stat-box">
+        <div class="label">Totaal triples</div>
+        <div class="value">${fN(total)}</div>
+        <div class="sub" style="color:${deltaCol}">${deltaStr}</div>
+      </div>
+      <div class="stat-box">
+        <div class="label">Klassen</div>
+        <div class="value" style="color:var(--accent)">${classes.length}</div>
+        <div class="sub">${fN(classes.reduce((s,r)=>s+r.aantalVandaag,0))} triples</div>
+      </div>
+      <div class="stat-box">
+        <div class="label">Properties</div>
+        <div class="value" style="color:var(--accent2)">${props.length}</div>
+        <div class="sub">${fN(props.reduce((s,r)=>s+r.aantalVandaag,0))} triples</div>
+      </div>
+      <div class="stat-box">
+        <div class="label">Namespaces</div>
+        <div class="value" style="color:var(--accent3)">${ns.length}</div>
+        <div class="sub">${nieuwItems > 0 ? nieuwItems + ' nieuwe items' : verdItems > 0 ? verdItems + ' items weg' : 'stabiel'}</div>
+      </div>
+    </div>
+    <h4>🏆 Top 10 — triples${!allZero ? ' <span style="font-size:10px;color:var(--muted);font-weight:400">Δ t.o.v. gisteren</span>' : ''}</h4>
+    <div style="margin-bottom:8px;font-size:11px;color:var(--muted);font-family:var(--mono)"><span class="chip">klasse</span> groen &nbsp;<span class="chip prop">property</span> blauw</div>
+    ${bars}
+    <h4>📋 Alle Klassen</h4>
+    <table><tr><th>Klasse</th><th>Vandaag</th>${!allZero ? '<th>Δ</th>' : ''}<th>Aandeel</th></tr>
+    ${classes.sort((a,b)=>b.aantalVandaag-a.aantalVandaag).map(r => {
+      const d = r.verschil;
+      const col = d > 0 ? 'var(--accent)' : d < 0 ? 'var(--danger)' : 'var(--muted)';
+      return `<tr><td><code>${r.localname}</code></td><td>${fN(r.aantalVandaag)}</td>${!allZero ? `<td style="color:${col}">${d>=0?'+':''}${fN(d)}</td>` : ''}<td style="color:var(--muted)">${(r.aantalVandaag/total*100).toFixed(2)}%</td></tr>`;
+    }).join('')}
+    </table>
+    <h4>📋 Alle Properties <span style="font-size:10px;color:var(--muted);font-weight:400">top 20</span></h4>
+    <table><tr><th>Property</th><th>Vandaag</th>${!allZero ? '<th>Δ</th>' : ''}<th>Aandeel</th></tr>
+    ${props.sort((a,b)=>b.aantalVandaag-a.aantalVandaag).slice(0,20).map(r => {
+      const d = r.verschil;
+      const col = d > 0 ? 'var(--accent)' : d < 0 ? 'var(--danger)' : 'var(--muted)';
+      return `<tr><td><code title="${r.uri}">${r.localname}</code></td><td>${fN(r.aantalVandaag)}</td>${!allZero ? `<td style="color:${col}">${d>=0?'+':''}${fN(d)}</td>` : ''}<td style="color:var(--muted)">${(r.aantalVandaag/total*100).toFixed(2)}%</td></tr>`;
+    }).join('')}
+    </table>`;
+}
+
+function runGrowthAgent(data) {
+  const allZ   = data.every(r => r.aantalGisteren === 0);
+  const nieuw  = data.filter(r => r.aantalGisteren === 0 && r.aantalVandaag > 0);
+  const verd   = data.filter(r => r.aantalVandaag === 0 && r.aantalGisteren > 0);
+  const gegr   = data.filter(r => r.verschil > 0 && r.aantalGisteren > 0);
+  const gesl   = data.filter(r => r.verschil < 0);
+  const onv    = data.filter(r => r.verschil === 0 && r.aantalVandaag > 0);
+  const total  = data.reduce((s, r) => s + r.aantalVandaag, 0);
+  const totalD = data.reduce((s, r) => s + r.verschil, 0);
+
+  if (allZ) return `<h4>📈 Groei &amp; Verandering</h4>
+    <div class="alert info">ℹ️ Initiële lading — alle gisteren-waarden zijn 0. Alle ${data.length} items zijn technisch "nieuw".</div>
+    <table><tr><th>Item</th><th>Type</th><th>Vandaag</th><th>Aandeel</th></tr>
+    ${data.sort((a,b)=>b.aantalVandaag-a.aantalVandaag).slice(0,30).map(r=>`
+      <tr><td><code>${r.localname}</code></td>
+      <td>${r.isClass?'<span class="chip">klasse</span>':'<span class="chip prop">prop</span>'}</td>
+      <td>${fN(r.aantalVandaag)}</td>
+      <td style="color:var(--muted)">${(r.aantalVandaag/total*100).toFixed(2)}%</td></tr>`).join('')}
+    </table>`;
+
+  return `<h4>📈 Groei &amp; Verandering</h4>
+    <div class="stat-grid">
+      <div class="stat-box"><div class="label">Nieuw</div><div class="value" style="color:var(--accent)">${nieuw.length}</div><div class="sub">items toegevoegd</div></div>
+      <div class="stat-box"><div class="label">Gegroeid</div><div class="value" style="color:var(--accent2)">${gegr.length}</div><div class="sub">meer triples</div></div>
+      <div class="stat-box"><div class="label">Geslonken</div><div class="value" style="color:${gesl.length?'var(--danger)':'var(--muted)'}">${gesl.length}</div><div class="sub">minder triples</div></div>
+      <div class="stat-box"><div class="label">Verdwenen</div><div class="value" style="color:${verd.length?'var(--danger)':'var(--muted)'}">${verd.length}</div><div class="sub">nu 0 triples</div></div>
+      <div class="stat-box"><div class="label">Onveranderd</div><div class="value" style="color:var(--muted)">${onv.length}</div><div class="sub">stabiel</div></div>
+      <div class="stat-box"><div class="label">Netto Δ triples</div><div class="value" style="color:${totalD>0?'var(--accent)':totalD<0?'var(--danger)':'var(--muted)'}">${totalD>=0?'+':''}${fN(totalD)}</div><div class="sub">totaal vandaag</div></div>
+    </div>
+
+    ${verd.length ? `<div class="alert danger">⛔ ${verd.length} item(s) volledig verdwenen: ${verd.map(r=>`<code>${r.localname}</code>`).join(', ')}</div>` : ''}
+
+    ${gegr.length ? `<h4>📈 Sterkste Groei</h4>
+    <table><tr><th>Item</th><th>Type</th><th>Gisteren</th><th>Vandaag</th><th>Δ abs</th><th>Δ %</th></tr>
+    ${gegr.sort((a,b)=>b.verschil-a.verschil).slice(0,15).map(r=>`
+      <tr><td><code title="${r.uri}">${r.localname}</code></td>
+      <td>${r.isClass?'<span class="chip">klasse</span>':'<span class="chip prop">prop</span>'}</td>
+      <td>${fN(r.aantalGisteren)}</td><td>${fN(r.aantalVandaag)}</td>
+      <td style="color:var(--accent)">+${fN(r.verschil)}</td>
+      <td style="color:var(--muted)">${r.aantalGisteren>0?((r.verschil/r.aantalGisteren)*100).toFixed(1)+'%':'nieuw'}</td></tr>`).join('')}
+    </table>` : ''}
+
+    ${gesl.length ? `<h4>📉 Dalingen</h4>
+    <table><tr><th>Item</th><th>Type</th><th>Gisteren</th><th>Vandaag</th><th>Δ abs</th><th>Δ %</th></tr>
+    ${gesl.sort((a,b)=>a.verschil-b.verschil).slice(0,10).map(r=>`
+      <tr><td><code title="${r.uri}">${r.localname}</code></td>
+      <td>${r.isClass?'<span class="chip">klasse</span>':'<span class="chip prop">prop</span>'}</td>
+      <td>${fN(r.aantalGisteren)}</td><td>${fN(r.aantalVandaag)}</td>
+      <td style="color:var(--danger)">${fN(r.verschil)}</td>
+      <td style="color:var(--muted)">${((r.verschil/r.aantalGisteren)*100).toFixed(1)}%</td></tr>`).join('')}
+    </table>` : ''}
+
+    ${nieuw.length ? `<h4>✨ Nieuwe Items</h4>
+    <table><tr><th>Item</th><th>Type</th><th>Vandaag</th></tr>
+    ${nieuw.sort((a,b)=>b.aantalVandaag-a.aantalVandaag).map(r=>`
+      <tr><td><code title="${r.uri}">${r.localname}</code></td>
+      <td>${r.isClass?'<span class="chip">klasse</span>':'<span class="chip prop">prop</span>'}</td>
+      <td>${fN(r.aantalVandaag)}</td></tr>`).join('')}
+    </table>` : ''}
+
+    <h4>📋 Volledige Delta <span style="font-size:10px;color:var(--muted);font-weight:400">gesorteerd op Δ</span></h4>
+    <table><tr><th>Item</th><th>Type</th><th>Gisteren</th><th>Vandaag</th><th>Δ abs</th><th>Δ %</th></tr>
+    ${[...data].sort((a,b)=>b.verschil-a.verschil).slice(0,40).map(r=>{
+      const col = r.verschil>0?'var(--accent)':r.verschil<0?'var(--danger)':'var(--muted)';
+      return `<tr><td><code title="${r.uri}">${r.localname}</code></td>
+      <td>${r.isClass?'<span class="chip">klasse</span>':'<span class="chip prop">prop</span>'}</td>
+      <td>${fN(r.aantalGisteren)}</td><td>${fN(r.aantalVandaag)}</td>
+      <td style="color:${col};font-weight:${r.verschil!==0?'700':'400'}">${r.verschil>=0?'+':''}${fN(r.verschil)}</td>
+      <td style="color:var(--muted)">${r.aantalGisteren>0?((r.verschil/r.aantalGisteren)*100).toFixed(1)+'%':'—'}</td></tr>`;
+    }).join('')}
+    </table>`;
+}
+
+function runNamespaceAgent(data) {
+  const total = data.reduce((s, r) => s + r.aantalVandaag, 0);
+  const allZero = data.every(r => r.aantalGisteren === 0);
+  const byNs = {};
+  data.forEach(r => {
+    if (!byNs[r.namespace]) byNs[r.namespace] = { classes:[], props:[], total:0, delta:0 };
+    r.isClass ? byNs[r.namespace].classes.push(r) : byNs[r.namespace].props.push(r);
+    byNs[r.namespace].total += r.aantalVandaag;
+    byNs[r.namespace].delta += r.verschil;
+  });
+
+  const sorted = Object.entries(byNs).sort((a,b) => b[1].total - a[1].total);
+
+  const summaryRows = sorted.map(([ns, i]) => {
+    const short = ns.replace('https://linkeddata.cultureelerfgoed.nl/def/','').replace(/https?:\/\//,'');
+    const pct = (i.total / total * 100).toFixed(1);
+    const dCol = i.delta > 0 ? 'var(--accent)' : i.delta < 0 ? 'var(--danger)' : 'var(--muted)';
+    return `<tr>
+      <td style="font-size:11px;font-family:var(--mono)" title="${ns}">${short}</td>
+      <td style="text-align:center">${i.classes.length}</td>
+      <td style="text-align:center">${i.props.length}</td>
+      <td>${fN(i.total)}</td>
+      <td style="color:var(--muted)">${pct}%</td>
+      ${!allZero ? `<td style="color:${dCol}">${i.delta>=0?'+':''}${fN(i.delta)}</td>` : ''}
+    </tr>`;
+  }).join('');
+
+  const details = sorted.map(([ns, i]) => {
+    const short = ns.replace('https://linkeddata.cultureelerfgoed.nl/def/','').replace(/https?:\/\//,'');
+    const pct = (i.total / total * 100).toFixed(2);
+    const dCol = i.delta > 0 ? 'var(--accent)' : i.delta < 0 ? 'var(--danger)' : 'var(--muted)';
+    const allItems = [...i.classes, ...i.props].sort((a,b) => b.aantalVandaag - a.aantalVandaag);
+    const mx = allItems[0]?.aantalVandaag || 1;
+    return `<h4>📦 ${short}</h4>
+    <div class="stat-grid" style="grid-template-columns:repeat(auto-fill,minmax(140px,1fr))">
+      <div class="stat-box"><div class="label">Triples</div><div class="value" style="font-size:18px">${fN(i.total)}</div><div class="sub">${pct}% van totaal</div></div>
+      <div class="stat-box"><div class="label">Klassen</div><div class="value" style="font-size:18px;color:var(--accent)">${i.classes.length}</div></div>
+      <div class="stat-box"><div class="label">Properties</div><div class="value" style="font-size:18px;color:var(--accent2)">${i.props.length}</div></div>
+      ${!allZero ? `<div class="stat-box"><div class="label">Δ vandaag</div><div class="value" style="font-size:18px;color:${dCol}">${i.delta>=0?'+':''}${fN(i.delta)}</div></div>` : ''}
+    </div>
+    ${allItems.map(r => {
+      const d = r.verschil;
+      const dCol2 = d > 0 ? 'var(--accent)' : d < 0 ? 'var(--danger)' : 'var(--muted)';
+      return `<div class="bar-row">
+        <div class="bar-label" title="${r.uri}">${r.isClass?'<span style="color:var(--accent);font-size:9px">▲</span> ':'<span style="color:var(--accent2);font-size:9px">◆</span> '}${r.localname}</div>
+        <div class="bar-track"><div class="bar-fill" style="width:${(r.aantalVandaag/mx*100).toFixed(1)}%;background:${r.isClass?'var(--accent)':'var(--accent2)'}"></div></div>
+        <div class="bar-value">${fN(r.aantalVandaag)}${!allZero?`<span style="color:${dCol2};font-size:10px;margin-left:5px">${d>=0?'+':''}${fN(d)}</span>`:''}</div>
+      </div>`;
+    }).join('')}`;
+  }).join('');
+
+  return `<h4>🏷️ Namespace Verdeling</h4>
+    <table>
+      <tr><th>Namespace</th><th style="text-align:center">Klassen</th><th style="text-align:center">Props</th><th>Triples</th><th>Aandeel</th>${!allZero?'<th>Δ</th>':''}</tr>
+      ${summaryRows}
+    </table>
+    <h4>🔍 Detail per Namespace</h4>
+    ${details}`;
+}
+
+function runHealthAgent(data) {
+  const total   = data.reduce((s, r) => s + r.aantalVandaag, 0);
+  const allZero = data.every(r => r.aantalGisteren === 0);
+  const n       = data.length;
+  const avg     = total / n;
+
+  // Checks
+  const out      = data.filter(r => r.aantalVandaag > avg * 3 && r.aantalVandaag > 100);
+  const sing     = data.filter(r => r.aantalVandaag === 1);
+  const zeros    = data.filter(r => r.aantalVandaag === 0 && r.aantalGisteren > 0);
+  const neg      = data.filter(r => r.verschil < 0 && !allZero);
+  const bigDrop  = data.filter(r => r.aantalGisteren > 0 && (r.verschil / r.aantalGisteren) < -0.1 && !allZero);
+
+  const warns = [];
+  const rdfT  = data.find(r => r.localname === 'type' && r.uri.includes('rdf-syntax'));
+  const sumCl = data.filter(r => r.isClass).reduce((s, r) => s + r.aantalVandaag, 0);
+  if (rdfT && sumCl > 0 && Math.abs(rdfT.aantalVandaag - sumCl) / Math.max(rdfT.aantalVandaag, sumCl) > 0.1)
+    warns.push(`rdf:type (${fN(rdfT.aantalVandaag)}) wijkt >10% af van som klasse-instanties (${fN(sumCl)}).`);
+  if (zeros.length > 0)
+    warns.push(`${zeros.length} item(s) zijn vandaag naar 0 gedaald: ${zeros.slice(0,5).map(r=>r.localname).join(', ')}${zeros.length>5?'…':''}.`);
+  if (bigDrop.length > 0)
+    warns.push(`${bigDrop.length} item(s) daalden meer dan 10%: ${bigDrop.slice(0,5).map(r=>`${r.localname} (${((r.verschil/r.aantalGisteren)*100).toFixed(1)}%)`).join(', ')}.`);
+
+  // Score: start 100, aftrek per probleem
+  let score = 100;
+  score -= out.length * 4;
+  score -= sing.length * 2;
+  score -= warns.length * 12;
+  score -= zeros.length * 8;
+  score -= bigDrop.length * 6;
+  score = Math.max(0, score);
+  const sc = score > 80 ? 'var(--accent)' : score > 60 ? 'var(--accent3)' : 'var(--danger)';
+
+  const negRows = neg.length ? `<h4>📉 Dalingen vandaag</h4>
+    <table><tr><th>Item</th><th>Gisteren</th><th>Vandaag</th><th>Δ</th><th>Δ %</th></tr>
+    ${neg.sort((a,b)=>a.verschil-b.verschil).slice(0,15).map(r => {
+      const pct = r.aantalGisteren > 0 ? ((r.verschil/r.aantalGisteren)*100).toFixed(1)+'%' : '—';
+      return `<tr><td><code>${r.localname}</code></td><td>${fN(r.aantalGisteren)}</td><td>${fN(r.aantalVandaag)}</td>
+        <td style="color:var(--danger);font-weight:700">${fN(r.verschil)}</td>
+        <td style="color:var(--muted)">${pct}</td></tr>`;
+    }).join('')}
+    </table>` : '';
+
+  return `<h4>🩺 Data Kwaliteit</h4>
+    <div class="stat-grid">
+      <div class="stat-box"><div class="label">Score</div><div class="value" style="color:${sc}">${score}/100</div><div class="sub">${score>80?'gezond':score>60?'aandacht nodig':'kritiek'}</div></div>
+      <div class="stat-box"><div class="label">Outliers</div><div class="value" style="color:${out.length?'var(--accent3)':'var(--accent)'}">${out.length}</div><div class="sub">&gt;3× gemiddelde</div></div>
+      <div class="stat-box"><div class="label">Singletons</div><div class="value" style="color:${sing.length?'var(--accent3)':'var(--accent)'}">${sing.length}</div><div class="sub">exact 1 triple</div></div>
+      <div class="stat-box"><div class="label">Naar nul</div><div class="value" style="color:${zeros.length?'var(--danger)':'var(--accent)'}">${zeros.length}</div><div class="sub">was >0 gisteren</div></div>
+      <div class="stat-box"><div class="label">&gt;10% daling</div><div class="value" style="color:${bigDrop.length?'var(--danger)':'var(--accent)'}">${bigDrop.length}</div><div class="sub">items</div></div>
+      <div class="stat-box"><div class="label">Gem. triples/item</div><div class="value" style="font-size:18px">${fN(Math.round(avg))}</div></div>
+    </div>
+    ${warns.length ? warns.map(w => `<div class="alert warning">⚠️ ${w}</div>`).join('') : '<div class="alert success">✓ Geen consistentieproblemen gevonden.</div>'}
+    ${out.length ? `<h4>🔺 Uitschieters <span style="font-size:10px;color:var(--muted);font-weight:400">&gt;3× gemiddelde</span></h4>
+    <table><tr><th>Item</th><th>Type</th><th>Aantal</th><th>Ratio</th></tr>
+    ${out.sort((a,b)=>b.aantalVandaag-a.aantalVandaag).map(r=>`
+      <tr><td><code title="${r.uri}">${r.localname}</code></td>
+      <td>${r.isClass?'<span class="chip">klasse</span>':'<span class="chip prop">prop</span>'}</td>
+      <td>${fN(r.aantalVandaag)}</td>
+      <td style="color:var(--accent3)">${(r.aantalVandaag/avg).toFixed(1)}×</td></tr>`).join('')}
+    </table>` : ''}
+    ${negRows}
+    ${sing.length ? `<h4>🔍 Singletons <span style="font-size:10px;color:var(--muted);font-weight:400">mogelijk laadprobleem</span></h4>${sing.map(r=>`<span class="chip warn" title="${r.uri}">${r.localname}</span>`).join('')}` : ''}
+    <h4>💡 Aanbevelingen</h4>
+    <ul>
+      <li>Score &lt; 70: stel een alert in voor automatische notificatie</li>
+      <li>Singletons: controleer of dit valide triples zijn of laadfouten</li>
+      <li>Dalingen &gt;10%: vergelijk met vorige week om patroon te herkennen</li>
+      <li>rdf:type-afwijking: kan wijzen op ontbrekende klasse-instanties in de export</li>
+    </ul>`;
+}
+
+
+// ══ WEEK HELPERS ═══════════════════════════════════════
+function buildMatrix(files) {
+  const allItems=new Map();
+  files.forEach(wf=>wf.data.forEach(r=>{
+    if(!allItems.has(r.localname)) allItems.set(r.localname,{localname:r.localname,isClass:r.isClass,namespace:r.namespace});
+  }));
+  const labels=files.map(wf=>wf.date||wf.filename.replace('.csv','').slice(-10));
+  const matrix={};
+  allItems.forEach((_,key)=>{
+    matrix[key]=files.map(wf=>{
+      const r=wf.data.find(r=>r.localname===key);
+      return r?r.aantalVandaag:null;
+    });
+  });
+  const dayTotals=files.map(wf=>wf.data.reduce((s,r)=>s+r.aantalVandaag,0));
+  return {labels,matrix,allItems,dayTotals};
+}
+
+function spark(vals, color) {
+  const clean = vals.map(v => v ?? 0);
+  const n = clean.length;
+  if (n === 0) return '<svg style="width:120px;height:28px;flex-shrink:0"></svg>';
+  const min = Math.min(...clean), max = Math.max(...clean), range = max - min || 1;
+  const W = 120, H = 28, px = 3, py = 4;
+  const pts = clean.map((v, i) => {
+    const x = px + (n === 1 ? (W-2*px)/2 : i/(n-1) * (W-2*px));
+    const y = py + (1 - (v - min) / range) * (H - 2*py);
+    return [+x.toFixed(2), +y.toFixed(2)];
+  });
+  const linePts = pts.map(([x,y]) => x+','+y).join(' ');
+  const fillPts = [...pts.map(([x,y]) => x+','+y), pts[n-1][0]+','+(H-py), pts[0][0]+','+(H-py)].join(' ');
+  const [ex, ey] = pts[n-1];
+  const fillColor = color + '40';
+  const hasNulls = vals.some(v => v === null);
+  return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:${W}px;height:${H}px;flex-shrink:0;overflow:visible">
+    <polygon points="${fillPts}" fill="${fillColor}" stroke="none"/>
+    <polyline points="${linePts}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" ${hasNulls ? 'stroke-dasharray="3 2"' : ''}/>
+    <circle cx="${ex}" cy="${ey}" r="2.2" fill="${color}" stroke="none"/>
+  </svg>`;
+}
+
+// ══ WEEK AGENTS ════════════════════════════════════════
+function runWeekOverviewAgent(files) {
+  const {labels,dayTotals}=buildMatrix(files);
+  const mx=Math.max(...dayTotals);
+  const deltas=dayTotals.map((t,i)=>i===0?null:t-dayTotals[i-1]);
+  const validDeltas=deltas.filter(d=>d!==null);
+  const totalGrowth=dayTotals[dayTotals.length-1]-dayTotals[0];
+  const avgD=validDeltas.length?validDeltas.reduce((s,d)=>s+d,0)/validDeltas.length:0;
+  const peakIdx=dayTotals.indexOf(mx);
+
+  const tl=files.map((wf,i)=>{
+    const d=deltas[i];
+    return `<div class="timeline-day">
+      <div class="tl-date">${labels[i]}</div>
+      <div class="tl-total">${fN(dayTotals[i])}</div>
+      ${d!==null?`<div class="tl-delta" style="color:${d>=0?'var(--accent)':'var(--danger)'}">${d>=0?'+':''}${fN(d)}</div>`:''}
+    </div>`;
+  }).join('');
+
+  const bars=files.map((wf,i)=>`
+    <div class="bar-row">
+      <div class="bar-label">${labels[i]}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${(dayTotals[i]/mx*100).toFixed(1)}%;background:var(--accent2)"></div></div>
+      <div class="bar-value">${fN(dayTotals[i])}</div>
+    </div>`).join('');
+
+  return `<h4>📅 Week Totaaloverzicht</h4>
+    <div class="stat-grid">
+      <div class="stat-box"><div class="label">Bestanden</div><div class="value">${files.length}</div><div class="sub">dagen geladen</div></div>
+      <div class="stat-box"><div class="label">Totale groei</div><div class="value" style="color:${totalGrowth>=0?'var(--accent)':'var(--danger)'}">${totalGrowth>=0?'+':''}${fN(totalGrowth)}</div><div class="sub">begin → eind</div></div>
+      <div class="stat-box"><div class="label">Gem. daggroei</div><div class="value" style="color:var(--accent2)">${avgD>=0?'+':''}${fN(Math.round(avgD))}</div></div>
+      <div class="stat-box"><div class="label">Piekdag</div><div class="value" style="font-size:14px">${labels[peakIdx]}</div><div class="sub">${fN(mx)} triples</div></div>
+    </div>
+    <h4>📆 Tijdlijn</h4>
+    <div class="timeline">${tl}</div>
+    <h4>📊 Triples per Dag</h4>
+    ${bars}`;
+}
+
+function runWeekTrendAgent(files) {
+  const {labels,matrix,allItems}=buildMatrix(files);
+  const trends=[];
+  allItems.forEach((info,key)=>{
+    const vals=matrix[key];
+    const clean=vals.filter(v=>v!==null);
+    if(clean.length<2) return;
+    const first=clean[0],last=clean[clean.length-1];
+    const absG=last-first;
+    const pctG=first>0?((last-first)/first)*100:null;
+    trends.push({...info,vals,first,last,absG,pctG});
+  });
+
+  const topG=[...trends].filter(t=>t.absG>0).sort((a,b)=>b.absG-a.absG).slice(0,10);
+  const topS=[...trends].filter(t=>t.absG<0).sort((a,b)=>a.absG-b.absG).slice(0,5);
+  const stable=trends.filter(t=>t.absG===0).slice(0,6);
+
+  // Heatmap + sparkline row: one cell per day, colour intensity = relative value
+  function trendRow(t, color, valColor) {
+    const maxV=Math.max(...t.vals.map(v=>v??0))||1;
+    const cells=t.vals.map((v,i)=>{
+      if(v===null) return `<div title="${labels[i]}: geen data" style="flex:1;height:26px;background:var(--surface2);border-radius:3px;opacity:0.3"></div>`;
+      const alpha=Math.round((v/maxV)*80).toString(16).padStart(2,'0');
+      const op=(0.35+(v/maxV)*0.65).toFixed(2);
+      return `<div title="${labels[i]}: ${fN(v)}" style="flex:1;height:26px;background:${color}${alpha};border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:9px;font-family:var(--mono);color:${color};opacity:${op}">${fN(v)}</div>`;
+    }).join('');
+    return `<div class="sparkline-row" style="gap:6px;margin-bottom:10px;align-items:center">
+      <div class="spark-label" title="${t.localname}" style="min-width:140px">${t.localname}</div>
+      ${spark(t.vals,color)}
+      <div style="display:flex;gap:3px;flex:1">${cells}</div>
+      <div class="spark-val" style="color:${valColor};min-width:72px;text-align:right">${t.absG>=0?'+':''}${fN(t.absG)}</div>
+    </div>`;
+  }
+
+  // Day-label header aligned to the heatmap cells
+  const dayHeader=`<div style="display:flex;gap:3px;margin-left:calc(140px + 120px + 6px + 6px);margin-bottom:3px">
+    ${labels.map(l=>`<div style="flex:1;font-size:9px;font-family:var(--mono);color:var(--muted);text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${l.slice(5)}</div>`).join('')}
+    <div style="min-width:72px"></div>
+  </div>`;
+
+  const gRows=topG.map(t=>trendRow(t,'#4ade80','var(--accent)')).join('');
+  const sRows=topS.map(t=>trendRow(t,'#f87171','var(--danger)')).join('');
+  const stRows=stable.map(t=>trendRow(t,'#64748b','var(--muted)')).join('');
+
+  return `<h4>📈 Top Groeiers (${labels[0]} → ${labels[labels.length-1]})</h4>
+    ${topG.length ? dayHeader+gRows : '<div class="alert info">Geen groei gedetecteerd.</div>'}
+    ${topS.length ? `<h4>📉 Sterkste Dalingen</h4>${dayHeader}${sRows}` : ''}
+    ${stable.length ? `<h4>➡️ Stabiele Items (sample)</h4>${dayHeader}${stRows}` : ''}
+    <h4>📋 Volledige Trend Tabel</h4>
+    <table><tr><th>Item</th><th>Type</th><th>Sparkline</th><th>Begin</th><th>Eind</th><th>Δ abs</th><th>Δ %</th></tr>
+    ${trends.sort((a,b)=>b.absG-a.absG).slice(0,30).map(t=>`
+      <tr>
+        <td><code>${t.localname}</code></td>
+        <td>${t.isClass?'<span class="chip">klasse</span>':'<span class="chip prop">prop</span>'}</td>
+        <td style="padding:2px 10px">${spark(t.vals,t.absG>0?'#4ade80':t.absG<0?'#f87171':'#64748b')}</td>
+        <td>${fN(t.first)}</td>
+        <td>${fN(t.last)}</td>
+        <td style="color:${t.absG>0?'var(--accent)':t.absG<0?'var(--danger)':'var(--muted)'}">${t.absG>=0?'+':''}${fN(t.absG)}</td>
+        <td style="color:var(--muted)">${t.pctG!==null?t.pctG.toFixed(1)+'%':'n.v.t.'}</td>
+      </tr>`).join('')}
+    </table>`;
+}
+
+function runWeekAnomalyAgent(files) {
+  const {labels,dayTotals,matrix,allItems}=buildMatrix(files);
+
+  // Date gaps
+  const dates=files.map(wf=>wf.date).filter(Boolean);
+  const gaps=[];
+  for(let i=1;i<dates.length;i++){
+    const diff=(new Date(dates[i])-new Date(dates[i-1]))/86400000;
+    if(diff>1) gaps.push({from:dates[i-1],to:dates[i],days:Math.round(diff)-1});
+  }
+
+  // Volume spikes
+  const deltas=dayTotals.map((t,i)=>i===0?null:t-dayTotals[i-1]).filter(d=>d!==null);
+  const avgAbs=deltas.length?deltas.reduce((s,d)=>s+Math.abs(d),0)/deltas.length:0;
+  const spikes=dayTotals.map((t,i)=>{
+    if(i===0) return null;
+    const d=t-dayTotals[i-1];
+    if(Math.abs(d)>avgAbs*2.5&&avgAbs>0) return {label:labels[i],delta:d,total:t};
+    return null;
+  }).filter(Boolean);
+
+  // Disappear-reappear
+  const disapp=[];
+  allItems.forEach((_,key)=>{
+    const vals=matrix[key];
+    for(let i=1;i<vals.length-1;i++)
+      if(vals[i]===0&&vals[i-1]>0&&vals[i+1]>0) disapp.push({name:key,day:labels[i]});
+  });
+
+  // Volatile (high CV)
+  const volatile=[];
+  allItems.forEach((info,key)=>{
+    const vals=matrix[key].filter(v=>v!==null);
+    if(vals.length<3) return;
+    const avg=vals.reduce((s,v)=>s+v,0)/vals.length;
+    const cv=avg>0?Math.sqrt(vals.reduce((s,v)=>s+(v-avg)**2,0)/vals.length)/avg:0;
+    if(cv>0.3) volatile.push({name:key,cv:cv.toFixed(2),avg,isClass:info.isClass});
+  });
+
+  const issues=gaps.length+spikes.length+disapp.length+volatile.length;
+
+  return `<h4>🚨 Anomalie Detectie</h4>
+    <div class="stat-grid">
+      <div class="stat-box"><div class="label">Datumgaten</div><div class="value" style="color:${gaps.length?'var(--danger)':'var(--accent)'}">${gaps.length}</div></div>
+      <div class="stat-box"><div class="label">Volume pieken</div><div class="value" style="color:${spikes.length?'var(--accent3)':'var(--accent)'}">${spikes.length}</div></div>
+      <div class="stat-box"><div class="label">Verdwenen items</div><div class="value" style="color:${disapp.length?'var(--danger)':'var(--accent)'}">${disapp.length}</div></div>
+      <div class="stat-box"><div class="label">Volatiele items</div><div class="value" style="color:${volatile.length?'var(--accent3)':'var(--accent)'}">${volatile.length}</div></div>
+    </div>
+    ${issues===0?'<div class="alert success">✓ Geen anomalieën — week ziet er consistent uit.</div>':''}
+    ${gaps.length?`<h4>📅 Ontbrekende Dagen</h4>${gaps.map(g=>`<div class="alert danger">✕ Gap van <strong>${g.days} dag(en)</strong> tussen ${g.from} en ${g.to}</div>`).join('')}`:''}
+    ${spikes.length?`<h4>⚡ Volume Pieken</h4>${spikes.map(s=>`<div class="alert warning">⚡ <strong>${s.label}</strong>: ${s.delta>=0?'+':''}${fN(s.delta)} t.o.v. vorige dag</div>`).join('')}`:''}
+    ${disapp.length?`<h4>👻 Tijdelijk Verdwenen</h4>${disapp.map(d=>`<div class="alert warning">👻 <code>${d.name}</code> was 0 op ${d.day}</div>`).join('')}`:''}
+    ${volatile.length?`<h4>📊 Volatiele Items (CV > 0.3)</h4>
+    <table><tr><th>Item</th><th>Type</th><th>CV</th><th>Gem.</th></tr>
+    ${volatile.sort((a,b)=>b.cv-a.cv).slice(0,10).map(v=>`
+      <tr><td><code>${v.name}</code></td>
+      <td>${v.isClass?'<span class="chip">klasse</span>':'<span class="chip prop">prop</span>'}</td>
+      <td style="color:var(--accent3)">${v.cv}</td>
+      <td>${fN(Math.round(v.avg))}</td></tr>`).join('')}
+    </table>`:''}`;
+}
+
+// ══ RIJKSMONUMENT AGENTS ═══════════════════════════════
+
+/**
+ * Exacte lijst van CEO-ontologie properties die betrekking hebben op rijksmonumenten.
+ * Bron: https://linkeddata.cultureelerfgoed.nl/def/ceo#
+ */
+const RM_URIS = new Set([
+  'http://www.w3.org/1999/02/22-rdf-syntax-ns#type',
+  'https://linkeddata.cultureelerfgoed.nl/def/ceo#heeftGeometrie',
+  'https://linkeddata.cultureelerfgoed.nl/def/ceo#rijksmonumentnummer',
+  'https://linkeddata.cultureelerfgoed.nl/def/ceo#bevatObject',
+  'https://linkeddata.cultureelerfgoed.nl/def/ceo#cultuurhistorischObjectnummer',
+  'https://linkeddata.cultureelerfgoed.nl/def/ceo#datumInschrijvingInMonumentenregister',
+  'https://linkeddata.cultureelerfgoed.nl/def/ceo#heeftBasisregistratieRelatie',
+  'https://linkeddata.cultureelerfgoed.nl/def/ceo#heeftBebouwdeKomType',
+  'https://linkeddata.cultureelerfgoed.nl/def/ceo#heeftGebeurtenis',
+  'https://linkeddata.cultureelerfgoed.nl/def/ceo#heeftJuridischeStatus',
+  'https://linkeddata.cultureelerfgoed.nl/def/ceo#heeftKennisregistratie',
+  'https://linkeddata.cultureelerfgoed.nl/def/ceo#heeftLocatieAanduiding',
+  'https://linkeddata.cultureelerfgoed.nl/def/ceo#heeftMonumentAard',
+  'https://linkeddata.cultureelerfgoed.nl/def/ceo#heeftNaam',
+  'https://linkeddata.cultureelerfgoed.nl/def/ceo#heeftOmschrijving',
+  'https://linkeddata.cultureelerfgoed.nl/def/ceo#heeftOorspronkelijkeFunctie',
+  'https://linkeddata.cultureelerfgoed.nl/def/ceo#heeftStijlEnCultuur',
+  'https://linkeddata.cultureelerfgoed.nl/def/ceo#heeftType',
+  'https://linkeddata.cultureelerfgoed.nl/def/ceo#internationaalKenteken',
+  'https://linkeddata.cultureelerfgoed.nl/def/ceo#kadasterdeel',
+  'https://linkeddata.cultureelerfgoed.nl/def/ceo#kadasterdeelnummer',
+  'https://linkeddata.cultureelerfgoed.nl/def/ceo#registratiedatum',
+  'https://linkeddata.cultureelerfgoed.nl/def/ceo#isOnderdeelVanComplex',
+  'https://linkeddata.cultureelerfgoed.nl/def/ceo#heeftHuidigeFunctie',
+  'https://linkeddata.cultureelerfgoed.nl/def/ceo#heeftBouwkundigeKwaliteit',
+  'https://linkeddata.cultureelerfgoed.nl/def/ceo#isHoofdobjectVanComplex',
+]);
+
+// Prioriteitsvolgorde voor de weergave (meest kritieke properties bovenaan)
+const RM_PRIORITY = [
+  'rijksmonumentnummer',
+  'cultuurhistorischObjectnummer',
+  'type',
+  'heeftGeometrie',
+  'heeftJuridischeStatus',
+  'heeftMonumentAard',
+  'datumInschrijvingInMonumentenregister',
+  'registratiedatum',
+  'heeftLocatieAanduiding',
+  'heeftNaam',
+  'heeftOmschrijving',
+  'heeftType',
+  'heeftOorspronkelijkeFunctie',
+  'heeftHuidigeFunctie',
+  'heeftStijlEnCultuur',
+  'heeftBouwkundigeKwaliteit',
+  'heeftGebeurtenis',
+  'heeftKennisregistratie',
+  'bevatObject',
+  'isOnderdeelVanComplex',
+  'isHoofdobjectVanComplex',
+  'heeftBasisregistratieRelatie',
+  'heeftBebouwdeKomType',
+  'internationaalKenteken',
+  'kadasterdeel',
+  'kadasterdeelnummer',
+];
+
+function prioritySort(a, b) {
+  const ia = RM_PRIORITY.indexOf(a.localname);
+  const ib = RM_PRIORITY.indexOf(b.localname);
+  if (ia === -1 && ib === -1) return b.aantalVandaag - a.aantalVandaag;
+  if (ia === -1) return 1;
+  if (ib === -1) return -1;
+  return ia - ib;
+}
+
+function detectRijksmonumentRows(data) {
+  return data.filter(r => RM_URIS.has(r.uri));
+}
+
+function runRijksmonumentDagAgent(data) {
+  const rmRows = detectRijksmonumentRows(data);
+  const total   = data.reduce((s, r) => s + r.aantalVandaag, 0);
+  const rmTotal = rmRows.reduce((s, r) => s + r.aantalVandaag, 0);
+  const rmGist  = rmRows.reduce((s, r) => s + r.aantalGisteren, 0);
+  const rmDelta = rmTotal - rmGist;
+  const coverage = total > 0 ? (rmTotal / total * 100).toFixed(2) : 0;
+  const allZero  = data.every(r => r.aantalGisteren === 0);
+
+
+  // Verwachte properties die ontbreken (in RM_URIS maar niet in data)
+  const foundUris = new Set(rmRows.map(r => r.uri));
+  const missingProps = [...RM_URIS].filter(u => !foundUris.has(u)).map(u => u.split(/[#/]/).pop());
+
+  // Growth per rm row
+  const groeiers = rmRows.filter(r => r.verschil > 0).sort((a, b) => b.verschil - a.verschil);
+  const dalers   = rmRows.filter(r => r.verschil < 0).sort((a, b) => a.verschil - b.verschil);
+  const stabiel  = rmRows.filter(r => r.verschil === 0 && r.aantalVandaag > 0);
+
+  const statusColor = rmTotal === 0 ? 'var(--danger)' : rmDelta > 0 ? 'var(--accent)' : rmDelta < 0 ? 'var(--danger)' : 'var(--muted)';
+  const deltaLabel  = allZero ? 'n.v.t.' : (rmDelta >= 0 ? '+' : '') + fN(rmDelta);
+
+  // rijksmonumentnummer-rij apart uitlichten
+  const rmNumRow = rmRows.find(r => r.localname === 'rijksmonumentnummer');
+
+  const mx = Math.max(...rmRows.map(r => r.aantalVandaag), 1);
+  const sortedRows = [...rmRows].sort(prioritySort);
+
+  const rmBars = sortedRows.length
+    ? sortedRows.map(r => {
+        const isKey = r.localname === 'rijksmonumentnummer' || r.localname === 'cultuurhistorischObjectnummer';
+        const barColor = isKey ? 'var(--accent3)' : 'var(--accent2)';
+        return `
+        <div class="bar-row">
+          <div class="bar-label" title="${r.uri}">${r.localname}${isKey ? ' ⭐' : ''}</div>
+          <div class="bar-track"><div class="bar-fill" style="width:${(r.aantalVandaag/mx*100).toFixed(1)}%;background:${barColor}"></div></div>
+          <div class="bar-value">${fN(r.aantalVandaag)}</div>
+        </div>`;
+      }).join('')
+    : '<div class="alert warning">⚠️ Geen van de 26 CEO-rijksmonument properties gevonden in dit bestand. Controleer of de CSV CEO-ontologie-items bevat.</div>';
+
+  const deltaRow = (r) => {
+    const d = r.verschil;
+    const col = d > 0 ? 'var(--accent)' : d < 0 ? 'var(--danger)' : 'var(--muted)';
+    const isKey = r.localname === 'rijksmonumentnummer' || r.localname === 'cultuurhistorischObjectnummer';
+    return `<tr${isKey ? ' style="background:rgba(245,158,11,0.06)"' : ''}>
+      <td><code>${r.localname}</code>${isKey ? ' ⭐' : ''}</td>
+      <td>${fN(r.aantalGisteren)}</td>
+      <td>${fN(r.aantalVandaag)}</td>
+      <td style="color:${col};font-weight:700">${d >= 0 ? '+' : ''}${fN(d)}</td>
+      <td style="color:var(--muted)">${r.aantalGisteren > 0 ? ((d / r.aantalGisteren) * 100).toFixed(1) + '%' : 'nieuw'}</td>
+    </tr>`;
+  };
+
+  return `<h4>🏛️ Rijksmonument Monitor — Dag</h4>
+    <div class="stat-grid">
+      <div class="stat-box">
+        <div class="label">RM properties gevonden</div>
+        <div class="value" style="color:${rmRows.length === RM_URIS.size ? 'var(--accent)' : 'var(--accent3)'}">${rmRows.length} / ${RM_URIS.size}</div>
+        <div class="sub">van 26 verwacht</div>
+      </div>
+      <div class="stat-box">
+        <div class="label">Rijksmonumentnummers ⭐</div>
+        <div class="value" style="color:var(--accent3)">${rmNumRow ? fN(rmNumRow.aantalVandaag) : '—'}</div>
+        <div class="sub">${rmNumRow && !allZero ? (rmNumRow.verschil >= 0 ? '+' : '') + fN(rmNumRow.verschil) + ' t.o.v. gisteren' : 'vandaag'}</div>
+      </div>
+      <div class="stat-box">
+        <div class="label">Delta alle RM triples</div>
+        <div class="value" style="color:${statusColor}">${deltaLabel}</div>
+        <div class="sub">${allZero ? 'initiële lading' : rmGist > 0 ? ((rmDelta/rmGist)*100).toFixed(2)+'% groei' : 'was 0'}</div>
+      </div>
+    </div>
+
+    ${rmRows.length === 0
+      ? '<div class="alert danger">⛔ Geen CEO-rijksmonument properties herkend. Controleer of de item-kolom volledige URIs bevat (niet alleen localnames).</div>'
+      : rmDelta < 0 && !allZero
+        ? `<div class="alert warning">⚠️ Totaal rijksmonument triples gedaald met ${fN(Math.abs(rmDelta))} — controleer op verwijderingen of dataproblemen.</div>`
+        : rmDelta > 0 && !allZero
+          ? `<div class="alert success">✓ Rijksmonument triples gegroeid met +${fN(rmDelta)} t.o.v. gisteren.</div>`
+          : allZero
+            ? '<div class="alert info">ℹ️ Initiële lading — geen gisteren-vergelijking beschikbaar.</div>'
+            : '<div class="alert info">ℹ️ Rijksmonument triples onveranderd t.o.v. gisteren.</div>'
+    }
+
+    ${missingProps.length > 0 ? `
+    <div class="alert warning" style="margin-bottom:8px">
+      ⚠️ ${missingProps.length} verwachte CEO-properties ontbreken in dit bestand:
+      <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px">
+        ${missingProps.map(p => `<span class="chip warn">${p}</span>`).join('')}
+      </div>
+    </div>` : '<div class="alert success">✓ Alle 26 verwachte CEO-properties aanwezig.</div>'}
+
+    <h4>📊 Triples per CEO-property <span style="font-size:11px;color:var(--muted);font-weight:400">⭐ = kernidentificatie</span></h4>
+    ${rmBars}
+
+    ${!allZero ? `
+    ${groeiers.length ? `<div class="alert success">✓ ${groeiers.length} propert${groeiers.length===1?'y':'ies'} gegroeid · sterkste: <code>${groeiers[0].localname}</code> +${fN(groeiers[0].verschil)}</div>` : ''}
+    ${dalers.length  ? `<div class="alert warning">⚠️ ${dalers.length} propert${dalers.length===1?'y':'ies'} gedaald · sterkste daling: <code>${dalers[0].localname}</code> ${fN(dalers[0].verschil)}</div>` : ''}
+    <h4>📋 Mutaties t.o.v. Gisteren</h4>
+    <table>
+      <tr><th>Property</th><th>Gisteren</th><th>Vandaag</th><th>Δ abs</th><th>Δ %</th></tr>
+      ${[...sortedRows].map(deltaRow).join('')}
+    </table>` : `
+    <h4>📋 Overzicht CEO-properties (initiële lading)</h4>
+    <table>
+      <tr><th>Property</th><th>URI</th><th>Vandaag</th></tr>
+      ${sortedRows.map(r => `<tr>
+        <td><code>${r.localname}</code>${r.localname === 'rijksmonumentnummer' || r.localname === 'cultuurhistorischObjectnummer' ? ' ⭐' : ''}</td>
+        <td style="font-size:10px;color:var(--muted);font-family:var(--mono)">${r.uri}</td>
+        <td>${fN(r.aantalVandaag)}</td>
+      </tr>`).join('')}
+    </table>`}`;
+}
+
+function runRijksmonumentWeekAgent(files) {
+  const labels = files.map(wf => wf.date || wf.filename.slice(0, 10));
+  const n = files.length;
+
+  // Initialiseer alle bekende RM-URIs alvast met null-arrays zodat
+  // elke property altijd een tijdreeks van lengte n heeft.
+  const rmSeriesMap = {};
+  RM_URIS.forEach(uri => {
+    const localname = uri.split(/[#/]/).pop();
+    rmSeriesMap[uri] = { localname, uri, vals: Array(n).fill(null) };
+  });
+
+  const dayTotals      = Array(n).fill(0);
+  const dayGrandTotals = Array(n).fill(0);
+  const rmNumKey = 'https://linkeddata.cultureelerfgoed.nl/def/ceo#rijksmonumentnummer';
+
+  files.forEach((wf, idx) => {
+    const rmRows = detectRijksmonumentRows(wf.data);
+    dayTotals[idx]      = rmRows.reduce((s, r) => s + r.aantalVandaag, 0);
+    dayGrandTotals[idx] = wf.data.reduce((s, r) => s + r.aantalVandaag, 0);
+    rmRows.forEach(r => {
+      if (rmSeriesMap[r.uri]) rmSeriesMap[r.uri].vals[idx] = r.aantalVandaag;
+    });
+  });
+
+  // Totalen week
+  const totalStart  = dayTotals[0];
+  const totalEnd    = dayTotals[n - 1];
+  const totalGrowth = totalEnd - totalStart;
+  const deltas      = dayTotals.slice(1).map((v, j) => v - dayTotals[j]);
+  const avgDaily    = deltas.length ? deltas.reduce((s, d) => s + d, 0) / deltas.length : 0;
+
+  // rijksmonumentnummer-reeks apart
+  const rmNumVals   = rmSeriesMap[rmNumKey]?.vals ?? Array(n).fill(null);
+  const rmNumClean  = rmNumVals.filter(v => v !== null);
+  const rmNumStart  = rmNumClean[0] ?? 0;
+  const rmNumEnd    = rmNumClean[rmNumClean.length - 1] ?? 0;
+  const rmNumGrowth = rmNumEnd - rmNumStart;
+
+  // Dekking per dag (RM-triples / totaal triples — informatief)
+  const coverages = dayTotals.map((rm, j) =>
+    dayGrandTotals[j] > 0 ? (rm / dayGrandTotals[j] * 100).toFixed(2) : '0.00');
+
+
+  // Ontbrekende properties per dag
+  const missingPerDay = files.map((wf, j) => {
+    const foundUris = new Set(detectRijksmonumentRows(wf.data).map(r => r.uri));
+    const missing   = [...RM_URIS].filter(u => !foundUris.has(u)).map(u => u.split(/[#/]/).pop());
+    return { label: labels[j], missing };
+  });
+  const daysWithMissing = missingPerDay.filter(d => d.missing.length > 0);
+
+  // Trends per property, gesorteerd op prioriteit
+  const itemTrends = Object.values(rmSeriesMap).map(item => {
+    const clean = item.vals.filter(v => v !== null);
+    const first  = clean.length > 0 ? clean[0] : 0;
+    const last   = clean.length > 0 ? clean[clean.length - 1] : 0;
+    const absG   = last - first;
+    const pctG   = first > 0 ? ((absG / first) * 100).toFixed(1) : null;
+    return { ...item, first, last, absG, pctG };
+  }).sort((a, b) => {
+    const ia = RM_PRIORITY.indexOf(a.localname);
+    const ib = RM_PRIORITY.indexOf(b.localname);
+    if (ia === -1 && ib === -1) return Math.abs(b.absG) - Math.abs(a.absG);
+    if (ia === -1) return 1;
+    if (ib === -1) return -1;
+    return ia - ib;
+  });
+
+  // Anomalies
+  const anomalies = [];
+  for (let j = 1; j < n; j++) {
+    const prev = dayTotals[j - 1], curr = dayTotals[j];
+    if (prev > 0 && ((curr - prev) / prev) < -0.05)
+      anomalies.push({ day: labels[j], prev, curr, delta: curr - prev });
+  }
+
+  // Tijdlijn
+  const mxDay = Math.max(...dayTotals, 1);
+  const tl = dayTotals.map((tot, j) => {
+    const delta = j === 0 ? null : tot - dayTotals[j - 1];
+    const dCol  = delta === null ? '' : delta > 0 ? 'color:var(--accent)' : delta < 0 ? 'color:var(--danger)' : 'color:var(--muted)';
+    const dStr  = delta === null ? '' : (delta >= 0 ? '+' : '') + fN(delta);
+    const rmN   = rmNumVals[j];
+    return `<div class="timeline-day">
+      <div class="tl-date">${labels[j]}</div>
+      <div class="tl-total">${fN(tot)}</div>
+      ${delta !== null ? `<div class="tl-delta" style="${dCol}">${dStr}</div>` : ''}
+      ${rmN !== null ? `<div class="tl-delta" style="color:var(--accent3);font-size:10px">&#128273; ${fN(rmN)}</div>` : ''}
+
+    </div>`;
+  }).join('');
+
+  // Dagbars
+  const bars = dayTotals.map((tot, j) => `
+    <div class="bar-row">
+      <div class="bar-label">${labels[j]}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${(tot/mxDay*100).toFixed(1)}%;background:var(--accent3)"></div></div>
+      <div class="bar-value">${fN(tot)}</div>
+    </div>`).join('');
+
+  // Trendtabel: per property een rij met waarde per dag + sparkline
+  const dayHeaders = labels.map(l =>
+    `<th style="font-size:10px;font-family:var(--mono);font-weight:400;color:var(--muted);text-align:right">${l.slice(5)}</th>`
+  ).join('');
+
+  const trendRows = itemTrends.map(t => {
+    const isKey      = t.localname === 'rijksmonumentnummer' || t.localname === 'cultuurhistorischObjectnummer';
+    const hasData    = t.vals.some(v => v !== null);
+    const col        = t.absG > 0 ? 'var(--accent)' : t.absG < 0 ? 'var(--danger)' : 'var(--muted)';
+    const sparkColor = isKey ? '#f59e0b' : t.absG > 0 ? '#4ade80' : t.absG < 0 ? '#f87171' : '#64748b';
+    const maxV       = Math.max(...t.vals.map(v => v ?? 0), 1);
+
+    const cells = t.vals.map((v, j) => {
+      if (v === null) return `<td style="text-align:center;color:var(--muted);font-size:10px;font-family:var(--mono)">—</td>`;
+      const bg = isKey
+        ? `rgba(245,158,11,${(0.1 + (v/maxV)*0.5).toFixed(2)})`
+        : `rgba(96,165,250,${(0.05 + (v/maxV)*0.35).toFixed(2)})`;
+      return `<td style="text-align:right;background:${bg};font-family:var(--mono);font-size:11px;white-space:nowrap" title="${labels[j]}: ${fN(v)}">${fN(v)}</td>`;
+    }).join('');
+
+    return `<tr${isKey ? ' style="background:rgba(245,158,11,0.06)"' : !hasData ? ' style="opacity:0.4"' : ''}>
+      <td title="${t.uri}"><code>${t.localname}</code>${isKey ? ' &#11088;' : ''}</td>
+      ${cells}
+      <td style="color:${col};font-weight:700;white-space:nowrap;text-align:right">${t.absG >= 0 ? '+' : ''}${fN(t.absG)}</td>
+      <td style="color:var(--muted);text-align:right">${t.pctG !== null ? t.pctG + '%' : '—'}</td>
+      <td style="padding:2px 8px">${spark(t.vals, sparkColor)}</td>
+    </tr>`;
+  }).join('');
+
+  const foundCount = Object.values(rmSeriesMap).filter(s => s.vals.some(v => v !== null)).length;
+  const noData     = foundCount === 0;
+
+  return `<h4>&#127963; Rijksmonument Trend Monitor &mdash; Week</h4>
+    <div class="stat-grid">
+      <div class="stat-box">
+        <div class="label">Rijksmonumentnrs &#11088;</div>
+        <div class="value" style="color:var(--accent3)">${rmNumEnd > 0 ? fN(rmNumEnd) : '&mdash;'}</div>
+        <div class="sub">${rmNumGrowth >= 0 ? '+' : ''}${fN(rmNumGrowth)} over de week</div>
+      </div>
+      <div class="stat-box">
+        <div class="label">Totale RM groei</div>
+        <div class="value" style="color:${totalGrowth >= 0 ? 'var(--accent)' : 'var(--danger)'}">${totalGrowth >= 0 ? '+' : ''}${fN(totalGrowth)}</div>
+        <div class="sub">${totalStart > 0 ? ((totalGrowth / totalStart) * 100).toFixed(1) + '%' : 'n.v.t.'}</div>
+      </div>
+      <div class="stat-box">
+        <div class="label">Gem. daggroei RM</div>
+        <div class="value" style="color:var(--accent2)">${avgDaily >= 0 ? '+' : ''}${fN(Math.round(avgDaily))}</div>
+        <div class="sub">triples / dag</div>
+      </div>
+      <div class="stat-box">
+        <div class="label">Properties actief</div>
+        <div class="value" style="color:${foundCount === RM_URIS.size ? 'var(--accent)' : 'var(--accent3)'}">${foundCount} / ${RM_URIS.size}</div>
+        <div class="sub">van 26 verwacht</div>
+      </div>
+    </div>
+
+    ${noData
+      ? '<div class="alert danger">&#9940; Geen CEO-rijksmonument properties herkend. Controleer of de item-kolom volledige URIs bevat.</div>'
+      : anomalies.length
+        ? anomalies.map(a => `<div class="alert danger">&#9940; Daling op <strong>${a.day}</strong>: ${fN(a.delta)} RM triples (${((a.delta/a.prev)*100).toFixed(1)}%)</div>`).join('')
+        : '<div class="alert success">&#10003; Geen significante dalingen in rijksmonument triples deze week.</div>'
+    }
+
+    ${daysWithMissing.length
+      ? `<div class="alert warning">&#9888; Op ${daysWithMissing.length} dag(en) ontbreken CEO-properties:
+          ${daysWithMissing.map(d => `<div style="margin-top:4px;font-size:11px"><strong>${d.label}</strong>: ${d.missing.map(p => `<span class="chip warn">${p}</span>`).join(' ')}</div>`).join('')}
+        </div>`
+      : '<div class="alert success" style="margin-bottom:8px">&#10003; Alle 26 CEO-properties aanwezig in alle dagbestanden.</div>'
+    }
+
+    <h4>&#128198; Tijdlijn <span style="font-size:10px;color:var(--muted);font-weight:400">&#128273; = rijksmonumentnummer &middot; % = aandeel totaal</span></h4>
+    <div class="timeline">${tl}</div>
+
+    <h4>&#128202; RM Triples per Dag</h4>
+    ${bars}
+
+    <h4>&#128200; Trend per CEO-property <span style="font-size:10px;color:var(--muted);font-weight:400">&#11088; = kernidentificatie &middot; waarde per dag + sparkline</span></h4>
+    <div style="overflow-x:auto">
+    <table>
+      <tr><th>Property</th>${dayHeaders}<th>&#916; abs</th><th>&#916; %</th><th>Sparkline</th></tr>
+      ${trendRows}
+    </table>
+    </div>`;
+}
+
+
+// ══ EXPORT ═════════════════════════════════════════════
+function exportResults() {
+  const body=document.getElementById('resultsBody').innerHTML;
+  const title=document.getElementById('resultsTitle').textContent;
+  const date=new Date().toISOString().split('T')[0];
+  const html=`<!DOCTYPE html><html lang="nl"><head><meta charset="UTF-8">
+<title>${title} — ${date}</title>
+<style>
+body{font-family:system-ui,sans-serif;max-width:940px;margin:40px auto;padding:0 20px;color:#1a1a2e;line-height:1.6}
+h4{color:#0f3460;border-bottom:2px solid #0f3460;padding-bottom:5px;margin:22px 0 10px}
+h5{color:#1e40af;margin:14px 0 6px}
+code{background:#f0f4f8;padding:1px 5px;border-radius:3px;font-size:12px;font-family:monospace}
+pre{background:#f0f4f8;padding:14px;border-radius:6px;overflow-x:auto;font-size:12px;font-family:monospace;margin:10px 0}
+table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13px}
+th{background:#0f3460;color:#fff;padding:8px 12px;text-align:left}
+td{padding:7px 12px;border-bottom:1px solid #e2e8f0}
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin:14px 0}
+.stat-box{background:#f0f4f8;border-radius:8px;padding:14px}
+.label{font-size:10px;color:#64748b;margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em}
+.value{font-size:20px;font-weight:800;color:#0f3460}.sub{font-size:11px;color:#64748b}
+.alert{border-radius:6px;padding:10px 14px;margin:8px 0;font-size:13px}
+.alert.info{background:#eff6ff;color:#1e40af;border:1px solid #bfdbfe}
+.alert.warning{background:#fffbeb;color:#92400e;border:1px solid #fde68a}
+.alert.success{background:#f0fdf4;color:#166534;border:1px solid #bbf7d0}
+.alert.danger{background:#fef2f2;color:#991b1b;border:1px solid #fecaca}
+.bar-row{display:flex;align-items:center;gap:10px;margin:5px 0;font-size:12px}
+.bar-label{min-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#64748b}
+.bar-track{flex:1;height:8px;background:#e2e8f0;border-radius:4px;overflow:hidden}
+.bar-fill{height:100%;border-radius:4px}.bar-value{min-width:70px;text-align:right}
+.chip{display:inline-block;background:#dcfce7;color:#166534;border-radius:3px;padding:1px 6px;font-size:11px;margin:2px}
+.chip.prop{background:#dbeafe;color:#1e40af}.chip.warn{background:#fef3c7;color:#92400e}
+.timeline{display:flex;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;margin:14px 0}
+.timeline-day{flex:1;padding:10px 8px;text-align:center;border-right:1px solid #e2e8f0;font-size:11px}
+.timeline-day:last-child{border-right:none}
+.tl-date{color:#64748b;margin-bottom:4px}.tl-total{font-weight:700;font-size:13px;color:#0f3460}
+.sparkline-row{display:flex;align-items:center;gap:10px;margin-bottom:6px;font-size:12px}
+.spark-label{min-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#64748b}
+.spark-val{min-width:80px;text-align:right}
+</style></head><body>
+<h1>${title}</h1>
+<p style="color:#64748b;font-size:13px">Gegenereerd: ${date} · CEO Linked Data Monitoring</p>
+${body}
+</body></html>`;
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([html],{type:'text/html'}));
+  a.download=`ld-rapport-${date}.html`;
+  a.click();
+}
+
+// ══ INIT ═══════════════════════════════════════════════
+renderAgents();
+</script>
+</body>
+</html>
