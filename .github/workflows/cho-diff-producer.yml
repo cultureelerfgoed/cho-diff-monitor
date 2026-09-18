@@ -31,10 +31,31 @@ jobs:
       - name: Download RDF-resultaat van Triply Query API
         shell: pwsh
         run: |
-          curl `
+          curl.exe `
+            --fail-with-body `
+            --show-error `
+            --location `
             -H "Accept: text/turtle" `
             "https://api.linkeddata.cultureelerfgoed.nl/queries/rce/Query-11-4/2/run?page=1&pageSize=1000" `
             -o diff.ttl
+
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "Download van Query-11-4 is mislukt."
+            if (Test-Path diff.ttl) {
+              Write-Host "Antwoord van server:"
+              Get-Content diff.ttl
+            }
+            exit 1
+          }
+
+          $size = (Get-Item diff.ttl).Length
+          Write-Host "diff.ttl ontvangen: $size bytes"
+
+          if ($size -lt 100) {
+            Write-Host "Onverwacht klein antwoord van Query API:"
+            Get-Content diff.ttl
+            throw "Query API heeft geen bruikbaar RDF-resultaat geleverd."
+          }
 
       - name: Zet diff.ttl om naar diff.trig met named graph
         shell: pwsh
