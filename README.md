@@ -1,23 +1,34 @@
-# DIFF CHO dagelijkse vergelijking
+# CHO Diff Monitor: veranderingen in CHO-tellingen
+
+CHO Diff Monitor vergelijkt dagelijkse tellingen van de
+CHO-gegevens van de Rijksdienst voor het Cultureel Erfgoed (RCE)
+in TriplyDB.
+
+De workflow bewaart meetstanden in de dataset `rce/diff-cho`.
+De dagmonitor vergelijkt twee opeenvolgende meetstanden en
+publiceert de uitkomsten als RDF-resultaatgraph, CSV en e-mailrapport.
+De weekmonitor maakt een CSV en e-mailrapport over zeven dagen.
+
+## Wat meet de monitor?
+
+De monitor berekent verschillen tussen aantallen per gemeten item.
+Elk verschil ongelijk aan nul komt in de dagelijkse afwijkingenrapportage.
+
+Dit is geen volledige vergelijking van afzonderlijke RDF-triples.
+Inhoudelijke wijzigingen die de gemeten aantallen niet veranderen,
+blijven buiten beeld.
+
+## Onderdelen
+
+| Onderdeel | Functie |
+|---|---|
+| Producer | Haalt tellingen op en bewaart een dagelijkse meetstand |
+| Index | Verwijst naar beschikbare meetstanden en vergelijkingen |
+| Dagmonitor | Vergelijkt vandaag met gisteren |
+| Weekmonitor | Rapporteert over de zeven voorafgaande dagen |# DIFF CHO dagelijkse vergelijking
 
 ## Doel
 Deze repository bevat de workflows voor de dagelijkse productie en vergelijking van CHO-gegevens in TriplyDB.
-
-Het proces is ingericht voor volledige uitlegbaarheid, reproduceerbaarheid en overdraagbaarheid.  
-Elke wijziging in de data wordt zichtbaar gemaakt, ongeacht omvang.
-
-Het proces bestaat uit drie samenhangende onderdelen:
-
-1. Producer – vastleggen van dagelijkse snapshots (daggraphs)
-2. Index – vastleggen van de actuele navigatiestatus (state)
-3. Monitor – vergelijken en rapporteren van opeenvolgende daggraphs
-
-Elke dagelijkse vergelijking resulteert in:
-- een resultaat-graph in TriplyDB
-- een CSV-bestand met alle resultaten
-- een e-mailrapportage
-
-Het doel is vroege en volledige signalering van elke wijziging.
 
 ---
 
