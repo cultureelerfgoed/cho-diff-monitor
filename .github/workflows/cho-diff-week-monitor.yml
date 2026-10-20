@@ -3,9 +3,7 @@ name: CHO diff week monitor
 on:
   workflow_dispatch:
   schedule:
-    # Maandag 10:00 NL tijd
-    # Wintertijd: 09:00 UTC
-    # Zomertijd: 08:00 UTC (GitHub cron kent geen DST)
+# Maandag 09:00 UTC = 10:00 Nederlandse wintertijd / 11:00 zomertijd
     - cron: "0 9 * * 1"
 
 jobs:
