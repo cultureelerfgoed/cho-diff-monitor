@@ -1,282 +1,283 @@
-# CHO Diff Monitor: veranderingen in CHO-tellingen
+# CHO Diff Monitor
 
-CHO Diff Monitor vergelijkt dagelijkse tellingen van de
-CHO-gegevens van de Rijksdienst voor het Cultureel Erfgoed (RCE)
-in TriplyDB.
+CHO Diff Monitor signaleert veranderingen in tellingen van CHO-gegevens
+van de Rijksdienst voor het Cultureel Erfgoed (RCE) in TriplyDB.
 
-De workflow bewaart meetstanden in de dataset `rce/diff-cho`.
-De dagmonitor vergelijkt twee opeenvolgende meetstanden en
-publiceert de uitkomsten als RDF-resultaatgraph, CSV en e-mailrapport.
-De weekmonitor maakt een CSV en e-mailrapport over zeven dagen.
+De producer bewaart dagelijkse meetstanden. De dagmonitor vergelijkt
+vandaag met gisteren en maakt een RDF-resultaatgraph, een CSV-bestand
+en een e-mailrapport. De weekmonitor levert een CSV en e-mailrapport
+over de zeven voorafgaande dagen.
 
 ## Wat meet de monitor?
 
-De monitor berekent verschillen tussen aantallen per gemeten item.
-Elk verschil ongelijk aan nul komt in de dagelijkse afwijkingenrapportage.
+De monitor vergelijkt aantallen per gemeten item. De lokale
+producerquery telt instanties per klasse en het gebruik van
+eigenschappen.
+
+Elk verschil ongelijk aan nul geldt als afwijking. Er zijn geen
+drempelwaarden: ook een verschil van +1 of -1 telt mee.
 
 Dit is geen volledige vergelijking van afzonderlijke RDF-triples.
-Inhoudelijke wijzigingen die de gemeten aantallen niet veranderen,
-blijven buiten beeld.
+Inhoudelijke wijzigingen waarbij de gemeten aantallen gelijk
+blijven, blijven buiten beeld. Toevoegingen en verwijderingen
+kunnen elkaar in de telling opheffen.
 
 ## Onderdelen
 
-| Onderdeel | Functie |
+| Onderdeel | Functie | Uitvoer |
+|---|---|---|
+| Producer | Haalt tellingen op en bewaart een dagelijkse meetstand | Daggraph |
+| Index | Legt verwijzingen naar beschikbare meetstanden en vergelijkingen vast | Indexgraph |
+| Dagmonitor | Vergelijkt vandaag met gisteren | Resultaatgraph, CSV en e-mail |
+| Weekmonitor | Vergelijkt de zeven voorafgaande dagen | CSV en e-mail |
+
+## Datasets
+
+| Dataset | Functie |
 |---|---|
-| Producer | Haalt tellingen op en bewaart een dagelijkse meetstand |
-| Index | Verwijst naar beschikbare meetstanden en vergelijkingen |
-| Dagmonitor | Vergelijkt vandaag met gisteren |
-| Weekmonitor | Rapporteert over de zeven voorafgaande dagen |# DIFF CHO dagelijkse vergelijking
+| `rce/cho` | Actuele CHO-brondata |
+| `rce/diff-cho` | Dagelijkse meetstanden, resultaatgraphs en index |
 
-## Doel
-Deze repository bevat de workflows voor de dagelijkse productie en vergelijking van CHO-gegevens in TriplyDB.
+De workflows schrijven hun uitvoer naar `rce/diff-cho`.
+Ze wijzigen de brondata in `rce/cho` niet.
 
----
+Platform: https://api.linkeddata.cultureelerfgoed.nl
 
-## Datasets en verantwoordelijkheden
-
-Binnen dit proces worden twee datasets onderscheiden:
-
-- cho  
-  Bevat uitsluitend de actuele brondata van CHO-objecten.  
-  Deze dataset wordt niet aangepast door dit proces.
-
-- diff-cho  
-  Bevat alle door dit proces geproduceerde graphs:
-  - dagelijkse snapshots (daggraphs)
-  - afgeleide vergelijking- en diff-graphs
-  - een index-graph met actuele metadata
-
-Alle vastlegging en historische reconstructie vindt plaats in diff-cho.
-
----
-
-## Tijddefinitie en afronding van dagstanden
-
-Binnen dit proces wordt gewerkt met kalenderdagen op basis van Nederlandse tijd (CET/CEST).
-
-Een dagstand wordt als afgerond beschouwd nadat de brondata volledig is verwerkt en beschikbaar is gesteld in de LDV. In de praktijk is dit rond 04:00 uur ’s nachts.
-
-De producer- en monitor-workflows draaien pas na dit moment, zodat uitsluitend volledige en stabiele dagstanden worden vastgelegd en vergeleken.
-
-Cron-tijden in GitHub Actions zijn ingesteld in UTC en zodanig gekozen dat zij in zowel zomer- als wintertijd na afronding van de dagverwerking plaatsvinden.
-
-Het systeem volgt expliciet kalenderdagen en geen dynamische “latest”-logica.
-
----
-
-## Dagelijkse flow
+## Dagelijkse verwerking
 
 ### Producer
 
-De producer-workflow draait dagelijks en is de enige component die bron-graphs schrijft.
+De producer:
 
-Verantwoordelijkheid:
-- vastleggen van de volledige CHO-stand per dag
-- bouwen van de index-graph
+1. Haalt RDF op via de opgeslagen TriplyDB-query
+   `rce/Query-11-4`, versie `2`.
+2. Zet de uitvoer om naar TriG met een graph-URI voor de uitvoerdatum.
+3. Importeert de daggraph in `rce/diff-cho`.
+4. Bouwt en importeert de indexgraph.
 
-Stappen:
-1. Ophalen van CHO-data via een vaste TriplyDB-query
-2. Omzetten van het resultaat naar Trig
-3. Opslaan van de data in een named graph voor vandaag
-4. Opbouwen en overschrijven van de index-graph
+Een daggraph bevat de opgehaalde tellingen. Het is geen volledige
+kopie van de CHO-brondata.
 
-Output:
-- één daggraph (snapshot) per datum
-- één index-graph (state)
+De workflow voert de opgeslagen TriplyDB-query uit, niet rechtstreeks
+het bestand `queries/query-producer.rq`. Controleer bij wijzigingen
+of de opgeslagen query en het lokale bestand overeenkomen.
 
----
+### Index
 
-## Index
+De indexgraph bevat metadata en verwijzingen naar meetstanden
+en vergelijkingen. De producer bouwt deze index.
 
-### Verantwoordelijkheid
-De index-graph fungeert als actueel navigatiepunt binnen de dataset diff-cho.
+De index staat in:
 
-De index:
-- legt vast welke daggraph en welke diff-graph de meest recente zijn
-- bevat uitsluitend metadata
-- bevat geen historie
-- wordt dagelijks volledig overschreven
+`https://linkeddata.cultureelerfgoed.nl/rce/diff-cho/graph/index`
 
-Graph:
-https://linkeddata.cultureelerfgoed.nl/rce/diff-cho/graph/index
+De producer importeert de index met `--mode overwrite`.
+De index is daarmee een actuele navigatiehulp, geen historisch logboek.
 
-De index-graph wordt uitsluitend geschreven door de producer.
+### Dagmonitor
 
-### Import-norm (TriplyDB CLI)
+De dagmonitor:
 
-De index-graph wordt altijd geïmporteerd met:
-triplydb import-from-file --mode overwrite
+1. Bepaalt de datums voor vandaag en gisteren.
+2. Vraagt de vergelijking van beide daggraphs op via SPARQL.
+3. Schrijft een CSV met alle teruggegeven resultaten.
+4. Schrijft en uploadt een RDF-resultaatgraph.
+5. Verstuurt een e-mailrapport.
 
-Snapshots en resultaat-graphs worden nooit overschreven en gebruiken de standaard CLI-modus (rename).
+De CSV en resultaatgraph bevatten de aantallen voor beide dagen
+en het berekende verschil. De e-mail toont de afwijkingen en bevat
+de volledige CSV als bijlage.
 
----
+De dagmonitor wijzigt de daggraphs niet, maar schrijft wel
+een afzonderlijke resultaatgraph.
 
-## Monitor
+## Weekmonitor
 
-### Verantwoordelijkheid
-De monitor vergelijkt twee opeenvolgende daggraphs en legt de verschillen vast.
+De weekmonitor gebruikt de zeven dagen voorafgaand aan de uitvoerdatum.
 
-Kenmerken:
-- draait dagelijks
-- vergelijkt vandaag met gisteren
-- rekent alle verschillen expliciet uit
-- gebruikt geen drempelwaarden
+Bij de geplande uitvoering op maandag is dat de vorige maandag
+tot en met zondag. Bij handmatig starten op een andere dag
+verschuift de periode mee.
 
-Stappen:
-1. Bepalen van vandaag en gisteren
-2. Controleren of beide daggraphs bestaan
-3. Uitvoeren van een vergelijking via SPARQL
-4. Berekenen van verschillen per item
-5. Genereren van:
-   - een CSV met alle resultaten
-   - een resultaat-graph met diff-informatie
-6. Versturen van een e-mailrapportage
+De weekmonitor:
 
-De monitor schrijft geen snapshots en geen index.
+1. Bepaalt de zeven datums.
+2. Controleert of de bijbehorende daggraphs bestaan.
+3. Haalt de tellingen op via SPARQL.
+4. Berekent verschillen tussen opeenvolgende dagen.
+5. Schrijft een CSV en verstuurt een e-mailrapport.
 
----
+Het totaalverschil is het verschil tussen de laatste en eerste
+dag van de periode. Het is geen telling van alle afzonderlijke
+wijzigingen gedurende die week.
 
-## Resultaat-graph als primaire bron
+De weekmonitor schrijft geen RDF-resultaatgraph.
 
-De resultaat-graph is de bron van waarheid voor monitoring en rapportage.
+## Planning
 
-Eigenschappen:
-- bevat uitsluitend afgeleide diff-data
-- is volledig reproduceerbaar
-- is onafhankelijk van CSV en mail
-- blijft permanent beschikbaar in TriplyDB
+De workflows gebruiken de volgende UTC-planning:
 
-Graph-formaat:
-https://linkeddata.cultureelerfgoed.nl/rce/diff-cho/graph/YYYY-MM-DD_YYYY-MM-DD
+| Workflow | Planning UTC | Nederlandse wintertijd | Nederlandse zomertijd |
+|---|---|---|---|
+| Producer | Dagelijks 07:00 | 08:00 | 09:00 |
+| Dagmonitor | Dagelijks 08:00 | 09:00 | 10:00 |
+| Weekmonitor | Maandag 09:00 | 10:00 | 11:00 |
 
-De eerste datum is vandaag.  
-De tweede datum is gisteren.
+De planning gaat ervan uit dat de nachtelijke bronverwerking
+vóór de producer is afgerond. Een later starttijdstip bewijst
+op zichzelf niet dat de bronverwerking volledig is.
 
----
+De workflows hebben afzonderlijke tijdschema's. De dagmonitor
+wacht niet via een workflow-afhankelijkheid op de producer.
 
-## Graph-conventies
+De scripts bepalen datums met de systeemdatum van de runner.
+Ze stellen niet expliciet de tijdzone `Europe/Amsterdam` in.
+Houd hier rekening mee bij handmatige uitvoeringen rond middernacht.
 
-Input-graphs (daggraphs):
-https://linkeddata.cultureelerfgoed.nl/rce/diff-cho/graph/YYYY-MM-DD
+## Handmatig uitvoeren
 
-Resultaat-graphs (vergelijkingen):
-https://linkeddata.cultureelerfgoed.nl/rce/diff-cho/graph/YYYY-MM-DD_YYYY-MM-DD
+1. Open de tab **Actions**.
+2. Kies de gewenste workflow:
+   - **CHO diff producer**
+   - **CHO diff monitor**
+   - **CHO diff week monitor**
+3. Klik op **Run workflow**.
+4. Controleer na afloop de stappen en uitvoer.
 
----
+Voer de dagmonitor pas uit als de benodigde daggraphs beschikbaar zijn.
+Controleer vóór het opnieuw uitvoeren van de producer of de daggraph
+voor die datum al bestaat.
 
-## Vocabulaire
+## Configuratie
 
-Resultaat-graphs gebruiken een eigen vocabulaire:
-https://linkeddata.cultureelerfgoed.nl/def/cho-diff#
+Stel deze repositorysecrets in:
 
-Dit vocabulaire bevat uitsluitend eigenschappen voor:
-- aantallen per dag
-- verschillen
-- bijbehorende datums
+| Secret | Functie |
+|---|---|
+| `TRIPLYDB_TOKEN` | Authenticatie voor TriplyDB |
+| `GMAIL_USERNAME` | Gmail-account voor rapportages |
+| `GMAIL_APP_PASSWORD` | App-wachtwoord voor verzending via Gmail |
 
-Bronvocabularia worden niet hergebruikt voor diff-data.
+Je vindt deze instellingen onder:
 
----
+**Settings > Secrets and variables > Actions > New repository secret**
 
-## Afwijkingsdefinitie
+Controleer de e-mailinstellingen en ontvangers in
+`scripts/mail.py` en `scripts/mail_week.py`.
 
-- elke verandering is een afwijking
-- een verschil van +1 of −1 is relevant
-- een verschil van 0 is geen afwijking
+De workflows gebruiken Windows-runners en downloaden de TriplyDB CLI.
+De dag- en weekmonitor gebruiken Python 3.11.
+De workflows installeren de benodigde Python-pakketten zelf.
 
-Gevolgen:
-- CSV bevat altijd alle resultaten
-- mail toont alleen regels met verschil ongelijk aan nul
+## Graph-URI's
 
----
+| Graph | URI |
+|---|---|
+| Dagelijkse meetstand | `https://linkeddata.cultureelerfgoed.nl/rce/diff-cho/graph/YYYY-MM-DD` |
+| Dagvergelijking | `https://linkeddata.cultureelerfgoed.nl/rce/diff-cho/graph/YYYY-MM-DD_YYYY-MM-DD` |
+| Index | `https://linkeddata.cultureelerfgoed.nl/rce/diff-cho/graph/index` |
 
-## CSV-uitvoer
+Bij een dagvergelijking staat de datum van vandaag vooraan
+en die van gisteren achteraan.
 
-Bij elke monitor-run wordt een CSV gegenereerd met:
-- alle items
-- aantallen voor vandaag en gisteren
-- het berekende verschil
+Daggraphs en resultaatgraphs worden geïmporteerd zonder expliciete
+`--mode overwrite`. Controleer het gedrag van de gebruikte CLI-versie
+voordat je een bestaande dag opnieuw importeert.
 
-De CSV:
-- bevat geen kleurcodering
-- is bedoeld voor archivering en analyse
-- wordt beschikbaar gesteld als workflow-artifact
-- wordt als bijlage meegestuurd per e-mail
+## Resultaatvocabulaire
 
-CSV’s zijn afgeleide rapportages en geen primaire bron.
+De dagmonitor gebruikt:
 
----
+`https://linkeddata.cultureelerfgoed.nl/def/cho-diff#`
 
-## Mailgedrag
+Per item legt de resultaatgraph vast:
 
-Er wordt elke dag een mail verstuurd:
-- ook als alle verschillen 0 zijn
-- ook bij fouten
+| Eigenschap | Betekenis |
+|---|---|
+| `diff:aantalVandaag` | Aantal op de huidige dag |
+| `diff:aantalGisteren` | Aantal op de vorige dag |
+| `diff:verschil` | Huidig aantal minus vorig aantal |
+| `diff:datumVandaag` | Datum van de huidige meetstand |
+| `diff:datumGisteren` | Datum van de vorige meetstand |
 
-Onderwerp:
-DIFF CHO YYYY-MM-DD
+## Rapportages
 
-De mail bevat:
-- een korte samenvatting
-- een tabel met alleen afwijkingen
-- een CSV-bijlage met het volledige overzicht
+### Dagrapport
 
-Kleurgebruik wordt uitsluitend in de mail toegepast.
+De dagelijkse CSV bevat:
 
----
+- `item`
+- `aantalVandaag`
+- `aantalGisteren`
+- `verschil`
 
-## Foutafhandeling
+Bestandsnaam:
 
-Het proces faalt deterministisch en zichtbaar.
+`diff-cho-YYYY-MM-DD_YYYY-MM-DD.csv`
 
-Ontbrekende daggraphs:
-- geen vergelijking
-- geen resultaat-graph
-- foutmelding per e-mail met expliciete datum
+Na een succesvolle uitvoering biedt GitHub Actions de CSV aan
+als workflow-artifact. De dagmonitor verstuurt ook een e-mail
+wanneer er geen afwijkingen zijn.
 
-SPARQL-fouten:
-- directe stop
-- geen afgeleide output
-- foutmelding per e-mail
+### Weekrapport
 
-Uploadfouten:
-- geen gedeeltelijke resultaten
-- foutmelding per e-mail
+De wekelijkse CSV bevat de zeven dagtellingen, zes verschillen
+tussen opeenvolgende dagen en het totaalverschil.
 
-Er zijn geen automatische correcties of herstelacties.
+Bestandsnaam:
 
----
+`diff-cho-week-YYYY-MM-DD_YYYY-MM-DD.csv`
 
-## Repository-structuur
+Na een succesvolle uitvoering biedt GitHub Actions de CSV aan
+als workflow-artifact.
 
-- .github/workflows/  
-  GitHub Actions voor producer, monitor en weekmonitor
-- queries/  
-  SPARQL-queries voor productie en vergelijking
-- scripts/  
-  Vergelijkingslogica, CSV-generatie en graph-export
-- docs/  
-  Architectuur, CLI-norm en ontwerpkeuzes
+## Fouten en controle
 
----
+Controleer bij een mislukte uitvoering eerst de logs in **Actions**.
 
-## Ontwerpprincipes
+Let daarbij op:
 
-- Producer is de enige writer van bron-graphs
-- Index is state en wordt overschreven
-- Monitors zijn read-only consumers
-- Alle logica is expliciet
-- Geen automatische correcties
+- beschikbaarheid van de benodigde daggraphs;
+- bereikbaarheid van de TriplyDB-query en het SPARQL-endpoint;
+- geldigheid en rechten van het TriplyDB-token;
+- fouten bij RDF-import;
+- Gmail-instellingen voor de rapportage.
 
----
+De dagmonitor probeert bij fouten binnen de verwerkingsstappen
+een foutmail te versturen en laat daarna de uitvoering mislukken.
+Fouten vóór het starten van het script vallen daar niet onder.
+Een probleem met de mailverbinding kan ook de foutmail verhinderen.
 
-## Onderhoud en overdracht
+De weekmonitor stopt als een benodigde daggraph ontbreekt.
+Het weekscript bevat geen algemene foutmailafhandeling.
 
-Deze architectuur is zelfstandig te begrijpen en overdraagbaar.
+Een mislukte uitvoering kan al bestanden of een resultaatgraph
+hebben aangemaakt. Controleer de afgeronde stappen voordat je
+opnieuw start. De code bevat geen terugdraaimechanisme.
 
-Alle afspraken zijn expliciet vastgelegd in:
-- workflows
-- scripts
-- documentatie
+## Repositorystructuur
 
-Er is geen verborgen logica buiten deze repository.
+| Pad | Inhoud |
+|---|---|
+| `.github/workflows/` | Producer, dagmonitor, weekmonitor en keep-alive |
+| `queries/` | Lokale SPARQL-querybestanden |
+| `scripts/` | Vergelijking, indexopbouw, RDF-export en e-mailrapportage |
+| `docs/` | Architectuur, graphconventies, vocabulaire en aanvullende bestanden |
+| `index-graph.yml` | Configuratie voor de indexgraph |
+| `tools/` | Meegeleverde hulpmiddelen |
+
+## Verdere documentatie
+
+- [Architectuur](docs/architecture.md)
+- [Verwerkingsstappen](docs/flow.md)
+- [Graphconventies](docs/graphs.md)
+- [Vocabulaire](docs/vocabulary.md)
+
+## Onderhoud
+
+Houd bij wijzigingen de workflows, scripts, opgeslagen TriplyDB-query
+en documentatie met elkaar in overeenstemming.
+
+Leg wijzigingen aan tellingen en queryversies vast. Een gewijzigde
+telmethode kan verschillen veroorzaken die niet voortkomen uit
+wijzigingen in de brondata.
