@@ -1,1 +1,15 @@
 .DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+
+# Uitvoer van lokale runs en proefdraaien
+output/
+
+# TriplyDB CLI wordt in de workflow gedownload, niet meegeleverd
+triplydb
+triplydb.exe

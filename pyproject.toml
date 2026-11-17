@@ -1,0 +1,33 @@
+[project]
+name = "cho-diff-monitor"
+version = "2.0.0"
+description = "Dagelijkse en wekelijkse monitoring van tellingen in de CHO linked data van de RCE"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "rdflib>=7.1",
+    "requests>=2.32",
+    "tzdata; sys_platform == 'win32'",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.6"]
+
+[tool.setuptools]
+packages = ["chodiff"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+filterwarnings = [
+    # interne deprecations in rdflib's eigen TriG-serializer/parser, niet in onze code
+    "ignore::DeprecationWarning:rdflib.*",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF"]
+ignore = ["RUF001", "RUF002", "RUF003"]  # en-dash / typografische tekens in Nederlandse tekst

@@ -1,0 +1,48 @@
+# Configuratie van de CHO Diff Monitor.
+#
+# Alles wat per omgeving kan verschillen staat hier; de code bevat geen
+# hardgecodeerde URL's, accounts of adressen. Geheimen (tokens, wachtwoorden)
+# staan NIET in dit bestand maar komen uit omgevingsvariabelen / GitHub secrets.
+
+[triplydb]
+# API waarop de CLI en het SPARQL-endpoint draaien
+api_url = "https://api.linkeddata.cultureelerfgoed.nl"
+# Webinterface, gebruikt voor klikbare links in rapportages
+web_url = "https://linkeddata.cultureelerfgoed.nl"
+account = "rce"
+dataset = "diff-cho"
+
+[producer]
+# Opgeslagen TriplyDB-query die de dagelijkse tellingen levert.
+# De tekst hoort gelijk te zijn aan queries/query-producer.rq; de producer
+# controleert dat bij elke run en geeft anders een waarschuwing.
+saved_query = "Query-11-4"
+saved_query_version = 2
+page_size = 1000
+# LIMIT in de opgeslagen query. Levert de query precies zoveel tellingen op,
+# dan is het resultaat waarschijnlijk afgekapt en stopt de producer.
+query_limit = 500
+local_query = "queries/query-producer.rq"
+
+[graphs]
+# Daggraph:       <base>YYYY-MM-DD
+# Resultaatgraph: <base>YYYY-MM-DD_YYYY-MM-DD   (vandaag_gisteren)
+base = "https://linkeddata.cultureelerfgoed.nl/rce/diff-cho/graph/"
+index = "https://linkeddata.cultureelerfgoed.nl/rce/diff-cho/graph/index"
+
+[vocabulary]
+diff = "https://linkeddata.cultureelerfgoed.nl/def/cho-diff#"
+count_predicate = "https://linkeddata.cultureelerfgoed.nl/def/ceo#aantalInstanties"
+
+[time]
+# Kalenderdagen volgen de Nederlandse tijd, niet de UTC-klok van de runner.
+timezone = "Europe/Amsterdam"
+
+[mail]
+smtp_host = "smtp.gmail.com"
+smtp_port = 587
+from_address = "rce-ldv-monitor@gmail.com"
+from_name = "DIFF CHO monitor"
+# Tijdelijk overschrijven kan met de omgevingsvariabele CHODIFF_MAIL_TO
+# (komma-gescheiden), bijvoorbeeld om een testrun naar jezelf te sturen.
+to = ["thesauri@cultureelerfgoed.nl"]

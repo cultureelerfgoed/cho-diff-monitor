@@ -1,13 +1,29 @@
 name: Keep-alive
 
+# GitHub zet geplande workflows uit na 60 dagen zonder activiteit in de
+# repository. Een workflow die alleen iets print telt niet als activiteit;
+# daarom zet deze workflow de geplande workflows via de API expliciet
+# (opnieuw) aan, wat de teller reset.
+
 on:
   schedule:
-    - cron: "15 1 * * 0"   # wekelijks, zondag 01:15 UTC
-  workflow_dispatch:        # handmatig kunnen starten
+    - cron: "15 1 1,15 * *" # 1e en 15e van de maand, 01:15 UTC
+  workflow_dispatch:
+
+permissions:
+  actions: write
 
 jobs:
-  ping:
+  enable:
+    name: Geplande workflows actief houden
     runs-on: ubuntu-latest
-    permissions: {}         # geen tokenrechten nodig
+    timeout-minutes: 5
     steps:
-      - run: echo "keep alive $(date -u)"
+      - name: Workflows (opnieuw) inschakelen
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for wf in daily.yml weekly.yml keep-alive.yml; do
+            gh api --method PUT "repos/$GITHUB_REPOSITORY/actions/workflows/$wf/enable"
+            echo "ingeschakeld: $wf"
+          done
