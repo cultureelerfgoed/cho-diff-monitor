@@ -1,0 +1,41 @@
+name: CHO diff setup
+description: Installeert Python, de afhankelijkheden en optioneel de TriplyDB CLI.
+
+inputs:
+  triplydb-cli:
+    description: TriplyDB CLI downloaden (nodig voor uploads)
+    default: "false"
+  dev:
+    description: Ook ontwikkelafhankelijkheden (pytest, ruff) installeren
+    default: "false"
+
+runs:
+  using: composite
+  steps:
+    - name: Python installeren
+      uses: actions/setup-python@v6
+      with:
+        python-version-file: .python-version
+        cache: pip
+        cache-dependency-path: requirements*.txt
+
+    - name: Afhankelijkheden installeren
+      shell: bash
+      env:
+        DEV: ${{ inputs.dev }}
+      run: |
+        if [[ "$DEV" == "true" ]]; then
+          python -m pip install -r requirements-dev.txt
+        else
+          python -m pip install -r requirements.txt
+        fi
+
+    - name: TriplyDB CLI installeren
+      if: inputs.triplydb-cli == 'true'
+      shell: bash
+      run: |
+        cli="$RUNNER_TEMP/triplydb"
+        curl --fail --silent --show-error --location --retry 3 \
+          --output "$cli" https://static.triply.cc/cli/triplydb-linux
+        chmod +x "$cli"
+        echo "TRIPLYDB_CLI=$cli" >> "$GITHUB_ENV"

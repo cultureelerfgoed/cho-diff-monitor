@@ -33,7 +33,17 @@ Kenmerken:
 - één graph per vergelijking;
 - wordt geproduceerd door de monitor-workflow;
 - bevat uitsluitend afgeleide diff-informatie;
-- wordt nooit overschreven.
+- wordt niet overschreven, tenzij een handmatige run expliciet *forceren* aanzet.
+
+---
+
+## Index-graph
+
+https://linkeddata.cultureelerfgoed.nl/rce/diff-cho/graph/index
+
+Bevat alleen verwijzingen naar de meest recente daggraph en resultaat-graph
+(`dct:date`, `prov:wasDerivedFrom`, `prov:used`). De dagmonitor overschrijft
+de index na elke geslaagde vergelijking van de huidige dag.
 
 ---
 

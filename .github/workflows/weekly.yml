@@ -1,0 +1,50 @@
+name: CHO diff · wekelijks
+
+on:
+  schedule:
+    # Maandag 09:00 UTC = 10:00 NL wintertijd / 11:00 NL zomertijd
+    - cron: "0 9 * * 1"
+  workflow_dispatch:
+    inputs:
+      week_van:
+        description: "Een dag in de gewenste week (JJJJ-MM-DD, leeg = vorige week)"
+        required: false
+      proefdraai:
+        description: Proefdraai (geen mail; rapport als artifact)
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cho-diff-weekly
+  cancel-in-progress: false
+
+jobs:
+  weekmonitor:
+    name: Weekmonitor · weekoverzicht
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: ./.github/actions/setup
+
+      - name: Weekoverzicht maken en mailen
+        env:
+          PYTHONUNBUFFERED: "1"
+          CHODIFF_WEEK_OF: ${{ inputs.week_van }}
+          CHODIFF_DRY_RUN: ${{ inputs.proefdraai }}
+          GMAIL_USERNAME: ${{ secrets.GMAIL_USERNAME }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+        run: python -m chodiff weekly
+
+      - name: Rapport bewaren
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: weekrapport-${{ github.run_id }}
+          path: output/
+          if-no-files-found: ignore
+          retention-days: 90

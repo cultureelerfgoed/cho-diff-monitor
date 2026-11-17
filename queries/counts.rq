@@ -1,0 +1,18 @@
+# Tellingen per item voor één of meer daggraphs.
+#
+# Gebruikt door zowel de dag- als de weekmonitor. De vergelijking zelf
+# gebeurt in Python, zodat items die in één van de graphs ontbreken
+# (nieuw of verdwenen) altijd meetellen.
+#
+# Plaatshouders (ingevuld door chodiff/sparql.py):
+#   {{GRAPHS}}     lijst graph-IRI's, bv. <…/graph/2026-11-17> <…/graph/2026-11-16>
+#   {{PREDICATE}}  de tel-eigenschap, standaard ceo:aantalInstanties
+
+SELECT ?graph ?item (SUM(?count) AS ?total)
+WHERE {
+  VALUES ?graph { {{GRAPHS}} }
+  GRAPH ?graph {
+    ?item {{PREDICATE}} ?count .
+  }
+}
+GROUP BY ?graph ?item

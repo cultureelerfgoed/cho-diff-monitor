@@ -29,6 +29,8 @@ Binnen dit proces wordt gewerkt met kalenderdagen op basis van Nederlandse tijd 
 Een dagstand wordt als afgerond beschouwd nadat de brondata volledig is verwerkt en beschikbaar is gesteld in de LDV. In de praktijk is dit rond 04:00 uur ’s nachts.
 De producer- en monitor-workflows draaien pas na dit moment, zodat uitsluitend volledige en stabiele dagstanden worden vastgelegd en vergeleken.
 Cron-tijden in GitHub Actions zijn ingesteld in UTC en zodanig gekozen dat zij in zowel zomer- als wintertijd na afronding van de dagverwerking plaatsvinden.
+De scripts bepalen de kalenderdag zelf in `Europe/Amsterdam`, onafhankelijk van de UTC-klok van de runner.
+Producer en dagmonitor draaien als twee opeenvolgende jobs in één workflow: de monitor start pas als de producer klaar is.
 Het systeem volgt expliciet kalenderdagen en niet dynamische “latest”-logica.
 
 De oplossing bestaat uit twee gescheiden maar samenhangende processen:
@@ -50,7 +52,9 @@ volledige stand van zaken van CHO-gegevens.
 - draait dagelijks;
 - gebruikt een vaste TriplyDB-query;
 - produceert exact één graph per dag;
-- overschrijft geen bestaande graphs.
+- valideert het queryresultaat vóór de upload (geldig, niet leeg, niet afgekapt);
+- overschrijft geen bestaande graphs, tenzij een handmatige run expliciet
+  *forceren* aanzet.
 
 ### Output
 Een daggraph (snapshot) met formaat:
@@ -79,7 +83,10 @@ De index:
 ### Graph
 https://linkeddata.cultureelerfgoed.nl/rce/diff-cho/graph/index
 
-De index-graph wordt uitsluitend geschreven door de producer.
+De index-graph wordt geschreven door de dagmonitor, direct nadat de
+resultaat-graph is opgeslagen. Zo verwijst de index nooit naar een
+resultaat-graph die (nog) niet bestaat. Bij een vergelijking van een eerdere
+datum blijft de index ongewijzigd.
 
 ---
 
@@ -107,8 +114,10 @@ Naast de dagelijkse monitor bestaat een weekmonitor.
 
 Kenmerken:
 - draait wekelijks (maandag);
-- vergelijkt een volledige kalenderweek (maandag t/m zondag);
+- vergelijkt de laatste volledige kalenderweek (maandag t/m zondag), ook als
+  hij op een andere dag handmatig wordt gestart;
 - valideert expliciet of alle daggraphs aanwezig zijn;
+- neemt ook items mee die pas halverwege de week verschijnen of verdwijnen;
 - genereert uitsluitend CSV en e-mail.
 
 De weekmonitor schrijft geen graphs naar TriplyDB.
@@ -187,7 +196,10 @@ ongeldige respons):
 - worden geen afgeleide resultaten gegenereerd;
 - wordt een foutmelding per e-mail verstuurd met de technische foutmelding.
 
-Er wordt geen retry-logica toegepast.
+Alleen tijdelijke netwerk- en serverfouten (HTTP 429/5xx, verbroken
+verbinding) worden maximaal drie keer opnieuw geprobeerd, met oplopende
+wachttijd. Dit is geen herstel van data. Inhoudelijke fouten worden nooit
+herhaald.
 
 ### Uploadfouten
 
@@ -226,6 +238,16 @@ proces plaats.
 - eenvoudiger onderhoud;
 - heldere verantwoordelijkheden;
 - fouten zijn beter te isoleren.
+
+Beide zijn aparte jobs met elk hun eigen resultaat, maar in één workflow
+gekoppeld. Zo is de volgorde gegarandeerd zonder op een tijdsmarge te
+vertrouwen.
+
+### Vergelijking in code, niet in SPARQL
+De SPARQL-query (`queries/counts.rq`) haalt alleen tellingen per graph op. De
+vergelijking gebeurt in Python (`chodiff/compare.py`). Daardoor tellen items
+die in één van de graphs ontbreken altijd mee, en is de logica met unit tests
+te controleren.
 
 ### Expliciete named graphs
 - geen impliciet gedrag;

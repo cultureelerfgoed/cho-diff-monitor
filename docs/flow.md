@@ -1,70 +1,67 @@
-# Dagelijkse flow
+# Verwerkingsstappen
 
-De dagelijkse verwerking bestaat uit twee gescheiden, opeenvolgende processen:
-- de producer,
-- de monitor.
+De dagelijkse verwerking draait in één workflow (`CHO diff · dagelijks`) met
+twee jobs: eerst de producer, daarna de dagmonitor. De dagmonitor start alleen
+als de producer is geslaagd, of bewust is overgeslagen bij een handmatige run
+met *alleen monitor*.
 
-Samen zorgen zij voor dagelijkse vastlegging en vergelijking van CHO-gegevens.
-
----
-
-## Producer-flow (daggraphs)
-
-1. Een GitHub Action start automatisch.
-2. De datum van **vandaag** wordt bepaald.
-3. Een vaste TriplyDB-query wordt uitgevoerd.
-4. Het resultaat wordt omgezet naar Trig.
-5. De data wordt opgeslagen in een named graph met formaat:
-
-   https://linkeddata.cultureelerfgoed.nl/rce/diff-cho/graph/YYYY-MM-DD
-
-Resultaat:
-- één daggraph per datum.
-
-De daggraph bevat de volledige stand van zaken voor **vandaag**.
+Alle datums zijn kalenderdagen in Nederlandse tijd (`Europe/Amsterdam`).
 
 ---
 
-## Monitor-flow (vergelijking)
+## Producer (`python -m chodiff produce`)
 
-1. Een GitHub Action start automatisch.
-2. De datums **vandaag** en **gisteren** worden bepaald.
-3. De bijbehorende daggraphs worden geïdentificeerd.
-4. Er wordt gecontroleerd of beide daggraphs bestaan.
-5. Een SPARQL-query vergelijkt de twee graphs.
-6. Verschillen per item worden berekend.
-7. Een CSV met alle resultaten wordt gegenereerd.
-8. Een resultaat-graph wordt opgebouwd en opgeslagen met formaat:
+1. Bepaal de datum van **vandaag**.
+2. Controleer of de opgeslagen TriplyDB-query nog gelijk is aan
+   `queries/query-producer.rq`. Is dat niet zo, dan volgt een waarschuwing.
+3. Voer de opgeslagen query uit (Turtle).
+4. Valideer het resultaat: geldige Turtle, niet leeg, alleen
+   `ceo:aantalInstanties` met gehele getallen, niet afgekapt door de `LIMIT`.
+5. Schrijf de daggraph als TriG met graph-URI
+   `https://linkeddata.cultureelerfgoed.nl/rce/diff-cho/graph/JJJJ-MM-DD`.
+6. Bestaat die graph al, sla dan de upload over, tenzij *forceren* aan staat.
+   Anders volgt de upload naar `rce/diff-cho`.
 
-   https://linkeddata.cultureelerfgoed.nl/rce/diff-cho/graph/YYYY-MM-DD_YYYY-MM-DD
+Bij een fout: foutmail, en de dagmonitor wordt niet gestart.
 
-   De eerste datum is **vandaag**.  
-   De tweede datum is **gisteren**.
+---
 
-9. Een e-mailrapportage wordt verstuurd.
+## Dagmonitor (`python -m chodiff compare`)
+
+1. Bepaal **vandaag** (of de opgegeven datum) en **gisteren**.
+2. Haal met `queries/counts.rq` de tellingen van beide daggraphs op.
+3. Ontbreekt één van beide graphs of is hij leeg: stop met een foutmail die
+   de ontbrekende datum(s) noemt.
+4. Vergelijk alle items uit beide dagen. Een item dat in één dag ontbreekt,
+   telt daar als 0 en wordt gemarkeerd als *nieuw* of *verdwenen*.
+5. Schrijf de CSV (alle items) en de resultaatgraph
+   `…/graph/JJJJ-MM-DD_JJJJ-MM-DD` (vandaag_gisteren).
+6. Upload de resultaatgraph (overslaan als hij al bestaat, tenzij *forceren*).
+7. Is de datum vandaag, werk dan de indexgraph bij (overschrijven).
+8. Verstuur het dagrapport en zet een samenvatting op de run-pagina.
+
+---
+
+## Weekmonitor (`python -m chodiff weekly`)
+
+1. Bepaal de laatste volledige kalenderweek (maandag t/m zondag), of de week
+   van de opgegeven datum.
+2. Haal met `queries/counts.rq` de tellingen van de zeven daggraphs op.
+3. Ontbreekt een daggraph: stop met een foutmail met de ontbrekende datums.
+4. Bereken per item de zes dagverschillen en het netto verschil
+   (zondag min maandag).
+5. Schrijf de CSV en verstuur het weekrapport met alle items die ergens in de
+   week veranderden.
+
+De weekmonitor schrijft geen graphs naar TriplyDB.
 
 ---
 
 ## Uitvoer en prioriteit
 
-- De **resultaat-graph** is de primaire output.
-- De **CSV** is secundaire output.
-- De **mail** is een rapportagevorm.
+- De **resultaatgraph** is de primaire output.
+- De **CSV** is secundair.
+- De **mail** en de **run-samenvatting** zijn rapportagevormen.
 
-Alle outputs worden dagelijks geproduceerd, ook als er geen afwijkingen zijn.
-
----
-
-## Foutafhandeling
-
-Als een vereiste daggraph ontbreekt:
-
-- wordt geen vergelijking uitgevoerd,
-- wordt geen resultaat-graph aangemaakt,
-- wordt een e-mail verstuurd met een expliciete foutmelding.
-
-De melding vermeldt:
-- welke graph ontbreekt,
-- om welke datum het gaat.
-
-Er zijn geen stille fouten.
+Alles wordt elke dag gemaakt, ook als er geen afwijkingen zijn. Er zijn geen
+stille fouten.

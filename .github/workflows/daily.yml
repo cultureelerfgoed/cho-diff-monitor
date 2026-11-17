@@ -1,0 +1,103 @@
+name: CHO diff · dagelijks
+
+# Producer en dagmonitor in één workflow: de monitor start pas als de
+# producer klaar is, in plaats van op een los tijdstip te hopen dat dat zo is.
+
+on:
+  schedule:
+    # Cron is UTC: 07:00 UTC = 08:00 NL wintertijd / 09:00 NL zomertijd,
+    # ruim na de nachtelijke bronverwerking (~04:00 NL).
+    - cron: "0 7 * * *"
+  workflow_dispatch:
+    inputs:
+      stappen:
+        description: Welke stappen uitvoeren
+        type: choice
+        options: [producer en monitor, alleen producer, alleen monitor]
+        default: producer en monitor
+      datum:
+        description: "Alleen monitor: te vergelijken dag (JJJJ-MM-DD, leeg = vandaag)"
+        required: false
+      forceren:
+        description: Bestaande graphs overschrijven
+        type: boolean
+        default: false
+      proefdraai:
+        description: Proefdraai (niets uploaden, geen mail; resultaat als artifact)
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cho-diff-daily
+  cancel-in-progress: false
+
+env:
+  PYTHONUNBUFFERED: "1"
+  CHODIFF_FORCE: ${{ inputs.forceren }}
+  CHODIFF_DRY_RUN: ${{ inputs.proefdraai }}
+
+jobs:
+  producer:
+    name: Producer · daggraph vastleggen
+    if: github.event_name == 'schedule' || inputs.stappen != 'alleen monitor'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: ./.github/actions/setup
+        with:
+          triplydb-cli: "true"
+
+      - name: Daggraph ophalen, valideren en uploaden
+        env:
+          TRIPLYDB_TOKEN: ${{ secrets.TRIPLYDB_TOKEN }}
+          GMAIL_USERNAME: ${{ secrets.GMAIL_USERNAME }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+        run: python -m chodiff produce
+
+      - name: Uitvoer bewaren
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: producer-${{ github.run_id }}
+          path: output/
+          if-no-files-found: ignore
+          retention-days: 30
+
+  monitor:
+    name: Dagmonitor · vergelijken en rapporteren
+    needs: producer
+    # Ook draaien als de producer bewust is overgeslagen ("alleen monitor").
+    if: >-
+      !cancelled()
+      && (needs.producer.result == 'success' || needs.producer.result == 'skipped')
+      && (github.event_name == 'schedule' || inputs.stappen != 'alleen producer')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: ./.github/actions/setup
+        with:
+          triplydb-cli: "true"
+
+      - name: Vergelijken, uploaden en mailen
+        env:
+          CHODIFF_DATE: ${{ inputs.datum }}
+          TRIPLYDB_TOKEN: ${{ secrets.TRIPLYDB_TOKEN }}
+          GMAIL_USERNAME: ${{ secrets.GMAIL_USERNAME }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+        run: python -m chodiff compare
+
+      - name: Rapport bewaren
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dagrapport-${{ github.run_id }}
+          path: output/
+          if-no-files-found: ignore
+          retention-days: 90

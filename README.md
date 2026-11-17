@@ -1,283 +1,177 @@
 # CHO Diff Monitor
 
-CHO Diff Monitor signaleert veranderingen in tellingen van CHO-gegevens
-van de Rijksdienst voor het Cultureel Erfgoed (RCE) in TriplyDB.
+[![CI](https://github.com/cultureelerfgoed/cho-diff-monitor/actions/workflows/ci.yml/badge.svg)](https://github.com/cultureelerfgoed/cho-diff-monitor/actions/workflows/ci.yml)
+[![Dagelijks](https://github.com/cultureelerfgoed/cho-diff-monitor/actions/workflows/daily.yml/badge.svg)](https://github.com/cultureelerfgoed/cho-diff-monitor/actions/workflows/daily.yml)
 
-De producer bewaart dagelijkse meetstanden. De dagmonitor vergelijkt
-vandaag met gisteren en maakt een RDF-resultaatgraph, een CSV-bestand
-en een e-mailrapport. De weekmonitor levert een CSV en e-mailrapport
-over de zeven voorafgaande dagen.
+De CHO Diff Monitor signaleert veranderingen in de CHO linked data van de
+Rijksdienst voor het Cultureel Erfgoed (RCE). Elke dag worden de aantallen
+instanties per klasse en per eigenschap vastgelegd. Die stand wordt vergeleken
+met de dag ervoor. Het resultaat komt als RDF-graph in TriplyDB, als CSV en als
+e-mailrapport. Op maandag volgt een weekoverzicht.
 
-## Wat meet de monitor?
+> **Wat het wel en niet is.** De monitor vergelijkt *tellingen*, geen
+> afzonderlijke triples. Wijzigingen waarbij de aantallen gelijk blijven,
+> vallen buiten beeld. Er zijn geen drempelwaarden: elk verschil telt.
 
-De monitor vergelijkt aantallen per gemeten item. De lokale
-producerquery telt instanties per klasse en het gebruik van
-eigenschappen.
+## Hoe het werkt
 
-Elk verschil ongelijk aan nul geldt als afwijking. Er zijn geen
-drempelwaarden: ook een verschil van +1 of -1 telt mee.
+```mermaid
+flowchart LR
+    Q["Opgeslagen query<br/>rce/Query-11-4 v2"] --> P
+    subgraph daily["Workflow: CHO diff · dagelijks (07:00 UTC)"]
+        P["Producer<br/>valideren + daggraph"] --> M["Dagmonitor<br/>vandaag vs gisteren"]
+    end
+    P -->|"graph/JJJJ-MM-DD"| T[("rce/diff-cho")]
+    M -->|"graph/JJJJ-MM-DD_JJJJ-MM-DD<br/>graph/index"| T
+    M --> R["CSV + e-mail<br/>+ run-samenvatting"]
+    T --> W["Weekmonitor<br/>(maandag 09:00 UTC)"] --> R2["CSV + e-mail"]
+```
 
-Dit is geen volledige vergelijking van afzonderlijke RDF-triples.
-Inhoudelijke wijzigingen waarbij de gemeten aantallen gelijk
-blijven, blijven buiten beeld. Toevoegingen en verwijderingen
-kunnen elkaar in de telling opheffen.
-
-## Onderdelen
-
-| Onderdeel | Functie | Uitvoer |
+| Onderdeel | Doet | Uitvoer |
 |---|---|---|
-| Producer | Haalt tellingen op en bewaart een dagelijkse meetstand | Daggraph |
-| Index | Legt verwijzingen naar beschikbare meetstanden en vergelijkingen vast | Indexgraph |
-| Dagmonitor | Vergelijkt vandaag met gisteren | Resultaatgraph, CSV en e-mail |
-| Weekmonitor | Vergelijkt de zeven voorafgaande dagen | CSV en e-mail |
+| **Producer** | Haalt de tellingen op via de opgeslagen TriplyDB-query, controleert ze en legt ze vast | Daggraph `…/graph/JJJJ-MM-DD` |
+| **Dagmonitor** | Vergelijkt vandaag met gisteren, inclusief nieuwe en verdwenen items | Resultaatgraph `…/graph/JJJJ-MM-DD_JJJJ-MM-DD`, indexgraph, CSV, e-mail |
+| **Weekmonitor** | Vergelijkt de laatste volledige kalenderweek (ma t/m zo) | CSV, e-mail |
 
-## Datasets
+Producer en dagmonitor zitten in één workflow. De monitor start pas als de
+producer klaar is. Alles schrijft naar `rce/diff-cho`; de brondata in
+`rce/cho` wordt nooit gewijzigd.
 
-| Dataset | Functie |
+## Workflows
+
+| Workflow | Planning (UTC) | NL winter / zomer |
+|---|---|---|
+| `CHO diff · dagelijks` ([daily.yml](.github/workflows/daily.yml)) | dagelijks 07:00 | 08:00 / 09:00 |
+| `CHO diff · wekelijks` ([weekly.yml](.github/workflows/weekly.yml)) | maandag 09:00 | 10:00 / 11:00 |
+| `CI` ([ci.yml](.github/workflows/ci.yml)) | bij push en pull request | |
+| `Keep-alive` ([keep-alive.yml](.github/workflows/keep-alive.yml)) | 1e en 15e van de maand | |
+
+De cron-tijden zijn UTC. De scripts rekenen zelf met kalenderdagen in
+`Europe/Amsterdam`. Een run rond middernacht krijgt dus de juiste Nederlandse
+datum.
+
+### Handmatig starten
+
+**Actions → CHO diff · dagelijks → Run workflow** biedt:
+
+| Invoer | Betekenis |
 |---|---|
-| `rce/cho` | Actuele CHO-brondata |
-| `rce/diff-cho` | Dagelijkse meetstanden, resultaatgraphs en index |
+| Stappen | *producer en monitor*, *alleen producer* of *alleen monitor* |
+| Datum | Alleen monitor: welke dag vergelijken met de dag ervoor (leeg = vandaag) |
+| Forceren | Bestaande graphs overschrijven |
+| Proefdraai | Niets uploaden en geen mail versturen; CSV, TriG en mail komen als artifact |
 
-De workflows schrijven hun uitvoer naar `rce/diff-cho`.
-Ze wijzigen de brondata in `rce/cho` niet.
+De weekmonitor heeft *Week van* (een willekeurige dag in de gewenste week) en
+*Proefdraai*.
 
-Platform: https://api.linkeddata.cultureelerfgoed.nl
+### Bestaande graphs
 
-## Dagelijkse verwerking
-
-### Producer
-
-De producer:
-
-1. Haalt RDF op via de opgeslagen TriplyDB-query
-   `rce/Query-11-4`, versie `2`.
-2. Zet de uitvoer om naar TriG met een graph-URI voor de uitvoerdatum.
-3. Importeert de daggraph in `rce/diff-cho`.
-4. Bouwt en importeert de indexgraph.
-
-Een daggraph bevat de opgehaalde tellingen. Het is geen volledige
-kopie van de CHO-brondata.
-
-De workflow voert de opgeslagen TriplyDB-query uit, niet rechtstreeks
-het bestand `queries/query-producer.rq`. Controleer bij wijzigingen
-of de opgeslagen query en het lokale bestand overeenkomen.
-
-### Index
-
-De indexgraph bevat metadata en verwijzingen naar meetstanden
-en vergelijkingen. De producer bouwt deze index.
-
-De index staat in:
-
-`https://linkeddata.cultureelerfgoed.nl/rce/diff-cho/graph/index`
-
-De producer importeert de index met `--mode overwrite`.
-De index is daarmee een actuele navigatiehulp, geen historisch logboek.
-
-### Dagmonitor
-
-De dagmonitor:
-
-1. Bepaalt de datums voor vandaag en gisteren.
-2. Vraagt de vergelijking van beide daggraphs op via SPARQL.
-3. Schrijft een CSV met alle teruggegeven resultaten.
-4. Schrijft en uploadt een RDF-resultaatgraph.
-5. Verstuurt een e-mailrapport.
-
-De CSV en resultaatgraph bevatten de aantallen voor beide dagen
-en het berekende verschil. De e-mail toont de afwijkingen en bevat
-de volledige CSV als bijlage.
-
-De dagmonitor wijzigt de daggraphs niet, maar schrijft wel
-een afzonderlijke resultaatgraph.
-
-## Weekmonitor
-
-De weekmonitor gebruikt de zeven dagen voorafgaand aan de uitvoerdatum.
-
-Bij de geplande uitvoering op maandag is dat de vorige maandag
-tot en met zondag. Bij handmatig starten op een andere dag
-verschuift de periode mee.
-
-De weekmonitor:
-
-1. Bepaalt de zeven datums.
-2. Controleert of de bijbehorende daggraphs bestaan.
-3. Haalt de tellingen op via SPARQL.
-4. Berekent verschillen tussen opeenvolgende dagen.
-5. Schrijft een CSV en verstuurt een e-mailrapport.
-
-Het totaalverschil is het verschil tussen de laatste en eerste
-dag van de periode. Het is geen telling van alle afzonderlijke
-wijzigingen gedurende die week.
-
-De weekmonitor schrijft geen RDF-resultaatgraph.
-
-## Planning
-
-De workflows gebruiken de volgende UTC-planning:
-
-| Workflow | Planning UTC | Nederlandse wintertijd | Nederlandse zomertijd |
-|---|---|---|---|
-| Producer | Dagelijks 07:00 | 08:00 | 09:00 |
-| Dagmonitor | Dagelijks 08:00 | 09:00 | 10:00 |
-| Weekmonitor | Maandag 09:00 | 10:00 | 11:00 |
-
-De planning gaat ervan uit dat de nachtelijke bronverwerking
-vóór de producer is afgerond. Een later starttijdstip bewijst
-op zichzelf niet dat de bronverwerking volledig is.
-
-De workflows hebben afzonderlijke tijdschema's. De dagmonitor
-wacht niet via een workflow-afhankelijkheid op de producer.
-
-De scripts bepalen datums met de systeemdatum van de runner.
-Ze stellen niet expliciet de tijdzone `Europe/Amsterdam` in.
-Houd hier rekening mee bij handmatige uitvoeringen rond middernacht.
-
-## Handmatig uitvoeren
-
-1. Open de tab **Actions**.
-2. Kies de gewenste workflow:
-   - **CHO diff producer**
-   - **CHO diff monitor**
-   - **CHO diff week monitor**
-3. Klik op **Run workflow**.
-4. Controleer na afloop de stappen en uitvoer.
-
-Voer de dagmonitor pas uit als de benodigde daggraphs beschikbaar zijn.
-Controleer vóór het opnieuw uitvoeren van de producer of de daggraph
-voor die datum al bestaat.
-
-## Configuratie
-
-Stel deze repositorysecrets in:
-
-| Secret | Functie |
-|---|---|
-| `TRIPLYDB_TOKEN` | Authenticatie voor TriplyDB |
-| `GMAIL_USERNAME` | Gmail-account voor rapportages |
-| `GMAIL_APP_PASSWORD` | App-wachtwoord voor verzending via Gmail |
-
-Je vindt deze instellingen onder:
-
-**Settings > Secrets and variables > Actions > New repository secret**
-
-Controleer de e-mailinstellingen en ontvangers in
-`scripts/mail.py` en `scripts/mail_week.py`.
-
-De workflows gebruiken Windows-runners en downloaden de TriplyDB CLI.
-De dag- en weekmonitor gebruiken Python 3.11.
-De workflows installeren de benodigde Python-pakketten zelf.
-
-## Graph-URI's
-
-| Graph | URI |
-|---|---|
-| Dagelijkse meetstand | `https://linkeddata.cultureelerfgoed.nl/rce/diff-cho/graph/YYYY-MM-DD` |
-| Dagvergelijking | `https://linkeddata.cultureelerfgoed.nl/rce/diff-cho/graph/YYYY-MM-DD_YYYY-MM-DD` |
-| Index | `https://linkeddata.cultureelerfgoed.nl/rce/diff-cho/graph/index` |
-
-Bij een dagvergelijking staat de datum van vandaag vooraan
-en die van gisteren achteraan.
-
-Daggraphs en resultaatgraphs worden geïmporteerd zonder expliciete
-`--mode overwrite`. Controleer het gedrag van de gebruikte CLI-versie
-voordat je een bestaande dag opnieuw importeert.
-
-## Resultaatvocabulaire
-
-De dagmonitor gebruikt:
-
-`https://linkeddata.cultureelerfgoed.nl/def/cho-diff#`
-
-Per item legt de resultaatgraph vast:
-
-| Eigenschap | Betekenis |
-|---|---|
-| `diff:aantalVandaag` | Aantal op de huidige dag |
-| `diff:aantalGisteren` | Aantal op de vorige dag |
-| `diff:verschil` | Huidig aantal minus vorig aantal |
-| `diff:datumVandaag` | Datum van de huidige meetstand |
-| `diff:datumGisteren` | Datum van de vorige meetstand |
+Staat de daggraph of resultaatgraph voor die datum er al (bijvoorbeeld na een
+handmatige run), dan wordt hij **niet** opnieuw geüpload. De run geeft dan een
+waarschuwing. Overschrijven gebeurt alleen met *Forceren*. Zonder deze controle
+zou de TriplyDB CLI een hernoemde kopie naast de bestaande graph zetten.
 
 ## Rapportages
 
-### Dagrapport
+**Dagmail** (`DIFF CHO JJJJ-MM-DD · n afwijkingen`)
+- Kerncijfers en een tabel met alle afwijkingen, grootste verschil bovenaan.
+- Nieuwe of verdwenen items krijgen een label en kleuren het rapport geel.
+- Links naar de resultaatgraph en de workflow-run.
+- Bijlage: `diff-cho-JJJJ-MM-DD_JJJJ-MM-DD.csv` met alle items
+  (`item, aantalVandaag, aantalGisteren, verschil`).
 
-De dagelijkse CSV bevat:
+**Weekmail** (`DIFF CHO week JJJJ-MM-DD – JJJJ-MM-DD · …`)
+- Alle items die ergens in de week veranderden, met netto verschil en verloop per dag.
+- Bijlage: `diff-cho-week-JJJJ-MM-DD_JJJJ-MM-DD.csv` met zeven dagtellingen,
+  zes dagverschillen en `totaalVerschil` (zondag min maandag).
 
-- `item`
-- `aantalVandaag`
-- `aantalGisteren`
-- `verschil`
+**Foutmail** (`… · FOUT in producer|dagmonitor|weekmonitor`). Gaat uit bij
+elke fout: ontbrekende daggraphs, een SPARQL- of uploadfout, of een ongeldig
+producerresultaat. De run faalt daarna zichtbaar in Actions.
 
-Bestandsnaam:
+Elke run zet bovendien een samenvatting op de run-pagina en bewaart CSV, TriG
+en de mail (`.eml` en `.html`) als artifact.
 
-`diff-cho-YYYY-MM-DD_YYYY-MM-DD.csv`
+## Controles
 
-Na een succesvolle uitvoering biedt GitHub Actions de CSV aan
-als workflow-artifact. De dagmonitor verstuurt ook een e-mail
-wanneer er geen afwijkingen zijn.
+De producer stopt, zonder iets te uploaden, als de opgeslagen query:
+- geen geldige Turtle of een lege graph oplevert;
+- andere eigenschappen dan `ceo:aantalInstanties` of geen gehele getallen bevat;
+- precies zoveel tellingen oplevert als de `LIMIT` (500). Het resultaat is dan
+  waarschijnlijk afgekapt.
 
-### Weekrapport
+Daarnaast waarschuwt de producer in twee gevallen:
+- de opgeslagen query wijkt af van [queries/query-producer.rq](queries/query-producer.rq);
+- er is een nieuwere versie van de opgeslagen query dan de versie in `config.toml`.
 
-De wekelijkse CSV bevat de zeven dagtellingen, zes verschillen
-tussen opeenvolgende dagen en het totaalverschil.
+De monitors stoppen met een foutmail als een benodigde daggraph ontbreekt.
+Mislukte HTTP-verzoeken naar TriplyDB worden maximaal drie keer herhaald
+(alleen bij netwerk- of serverfouten). Verder is er geen automatisch herstel.
 
-Bestandsnaam:
+## Configuratie
 
-`diff-cho-week-YYYY-MM-DD_YYYY-MM-DD.csv`
+Instellingen staan in [config.toml](config.toml): TriplyDB-account en dataset,
+de opgeslagen query, graph-URI's, vocabulaire, tijdzone en mailadressen.
 
-Na een succesvolle uitvoering biedt GitHub Actions de CSV aan
-als workflow-artifact.
+Repositorysecrets (**Settings → Secrets and variables → Actions**):
 
-## Fouten en controle
+| Secret | Gebruik |
+|---|---|
+| `TRIPLYDB_TOKEN` | Upload naar `rce/diff-cho` |
+| `GMAIL_USERNAME` | Afzendaccount voor de rapportages |
+| `GMAIL_APP_PASSWORD` | App-wachtwoord van dat account |
 
-Controleer bij een mislukte uitvoering eerst de logs in **Actions**.
+## Lokaal draaien
 
-Let daarbij op:
+```bash
+python -m pip install -r requirements-dev.txt
+```
 
-- beschikbaarheid van de benodigde daggraphs;
-- bereikbaarheid van de TriplyDB-query en het SPARQL-endpoint;
-- geldigheid en rechten van het TriplyDB-token;
-- fouten bij RDF-import;
-- Gmail-instellingen voor de rapportage.
+Proefdraai van de dagmonitor voor een bepaalde dag. Er wordt niets geüpload en
+geen mail verstuurd. Alles komt in `output/`:
 
-De dagmonitor probeert bij fouten binnen de verwerkingsstappen
-een foutmail te versturen en laat daarna de uitvoering mislukken.
-Fouten vóór het starten van het script vallen daar niet onder.
-Een probleem met de mailverbinding kan ook de foutmail verhinderen.
+```bash
+python -m chodiff compare --date 2026-11-16 --dry-run
+```
 
-De weekmonitor stopt als een benodigde daggraph ontbreekt.
-Het weekscript bevat geen algemene foutmailafhandeling.
+```bash
+python -m chodiff weekly --week-of 2026-11-12 --dry-run
+```
 
-Een mislukte uitvoering kan al bestanden of een resultaatgraph
-hebben aangemaakt. Controleer de afgeronde stappen voordat je
-opnieuw start. De code bevat geen terugdraaimechanisme.
+```bash
+python -m chodiff produce --dry-run
+```
 
-## Repositorystructuur
+Tests en lint:
+
+```bash
+python -m pytest
+```
+
+```bash
+ruff check . && ruff format --check .
+```
+
+Een echte upload vraagt `TRIPLYDB_TOKEN` en de TriplyDB CLI (`TRIPLYDB_CLI` of
+`triplydb` op het `PATH`). Wil je de mail naar jezelf sturen, zet dan
+`CHODIFF_MAIL_TO=jij@example.org`.
+
+## Repository
 
 | Pad | Inhoud |
 |---|---|
-| `.github/workflows/` | Producer, dagmonitor, weekmonitor en keep-alive |
-| `queries/` | Lokale SPARQL-querybestanden |
-| `scripts/` | Vergelijking, indexopbouw, RDF-export en e-mailrapportage |
-| `docs/` | Architectuur, graphconventies, vocabulaire en aanvullende bestanden |
-| `index-graph.yml` | Configuratie voor de indexgraph |
-| `tools/` | Meegeleverde hulpmiddelen |
-
-## Verdere documentatie
-
-- [Architectuur](docs/architecture.md)
-- [Verwerkingsstappen](docs/flow.md)
-- [Graphconventies](docs/graphs.md)
-- [Vocabulaire](docs/vocabulary.md)
+| `chodiff/` | Python-pakket: `cli` (commando's), `compare` (vergelijkingslogica), `sparql`, `rdfout` (graphs), `triply` (upload), `mail`, `report` (CSV), `dates`, `config` |
+| `queries/` | `counts.rq` (tellingen per graph, voor dag- en weekmonitor), `query-producer.rq` (kopie van de opgeslagen query) |
+| `tests/` | Unit tests (zonder netwerk) |
+| `.github/` | Workflows, gedeelde setup-action en Dependabot |
+| `docs/` | [Architectuur](docs/architecture.md), [verwerking](docs/flow.md), [graphs](docs/graphs.md), [vocabulaire](docs/vocabulary.md) |
 
 ## Onderhoud
 
-Houd bij wijzigingen de workflows, scripts, opgeslagen TriplyDB-query
-en documentatie met elkaar in overeenstemming.
-
-Leg wijzigingen aan tellingen en queryversies vast. Een gewijzigde
-telmethode kan verschillen veroorzaken die niet voortkomen uit
-wijzigingen in de brondata.
+- Pas je de opgeslagen query aan, werk dan ook `queries/query-producer.rq` en
+  `saved_query_version` in `config.toml` bij. De producer waarschuwt zolang ze
+  niet overeenkomen.
+- Een andere telmethode veroorzaakt verschillen die niet uit de brondata
+  komen. Leg zulke wijzigingen vast.
+- Dependabot stelt maandelijks updates voor van de GitHub Actions en de
+  Python-pakketten. De CI controleert ze.
